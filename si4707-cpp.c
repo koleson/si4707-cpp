@@ -4,6 +4,7 @@
 #include "hardware/i2c.h"
 #include "hardware/timer.h"
 #include "hardware/clocks.h"
+#include "bus_scan.h"
 
 // SPI Defines
 // We are going to use SPI 0, and allocate it to the following GPIO pins
@@ -54,14 +55,15 @@ int main()
     gpio_pull_up(I2C_SCL);
 
     // Timer example code - This example fires off the callback after 2000ms
+    // panic / hard assert - maybe `sleep_ms` causing problems?
     add_alarm_in_ms(2000, alarm_callback, NULL, false);
-    
-    while (true) {
+        
+    while(true) {
         // TODO:  add blinky
         puts("si4707-cpp: Hello, world!");
-        sleep_ms(500);
+        busy_wait_ms(1000);
+        bus_scan();
     }
     
-
     return 0;
 }

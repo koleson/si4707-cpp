@@ -1,0 +1,1 @@
+int bus_scan();
