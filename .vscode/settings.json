@@ -1,0 +1,20 @@
+{
+  "cmake.environment": {
+    "PICO_SDK_PATH": "/Users/koleson/Documents/Development/pico-sdk"
+},
+  "cmake.configureOnOpen": false,
+  "cmake.statusbar.advanced": {
+    "debug" : {
+      "visibility": "hidden"
+              },
+    "launch" : {
+      "visibility": "hidden"
+               },
+    //"build" : {
+    //  "visibility": "hidden"
+    //           },
+    "buildTarget" : {
+      "visibility": "hidden"
+               },
+     },
+}
