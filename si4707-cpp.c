@@ -14,13 +14,32 @@ int64_t alarm_callback(alarm_id_t id, void *user_data) {
     return 0;
 }
 
+void reset_si4707() {
+    puts("resetting Si4707");
+    
+    gpio_put(SI4707_RESET, 1);
+    sleep_ms(100);
+    
+    gpio_put(SI4707_RESET, 0);
+    sleep_ms(100);
+    
+    gpio_put(SI4707_RESET, 1);
+    puts("done resetting Si4707");
+}
 
-
-int main()
+void prepare()
 {
     stdio_init_all();
-
-    // SPI initialisation. This example will use SPI at 100kHz.
+    
+    // Prep Si4707 reset GPIO
+    gpio_init(SI4707_RESET);
+    gpio_set_dir(SI4707_RESET, GPIO_OUT);
+    
+    // prep LED GPIO
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    
+    // SPI initialization. This example will use SPI at 100kHz.
     spi_init(SPI_PORT, 100*1000);
     gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
     gpio_set_function(PIN_CS,   GPIO_FUNC_SIO);
@@ -30,25 +49,50 @@ int main()
     // Chip select is active-low, so we'll initialize it to a driven-high state
     gpio_set_dir(PIN_CS, GPIO_OUT);
     gpio_put(PIN_CS, 1);
-    
+}
 
-    // I2C Initialisation. Using it at 400Khz.
-    i2c_init(I2C_PORT, 400*1000);
+int main()
+{
+    puts("si4707-cpp: main()");
+    prepare();
+    
+    reset_si4707();
+    
+    // I2C Initialization. Using it at 100kHz.
+    i2c_init(I2C_PORT, 100*1000);
+    
     
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
-
-    // Timer example code - This example fires off the callback after 2000ms
-    // panic / hard assert - maybe `sleep_ms` causing problems?
+    
+    puts("not pulling up SCL/SDA");
+    // gpio_pull_up(I2C_SDA);
+    // gpio_pull_up(I2C_SCL);
+    
+    // test hardware timer
     add_alarm_in_ms(2000, alarm_callback, NULL, false);
         
     while(true) {
-        // TODO:  add blinky
-        puts("si4707-cpp: Hello, world!");
-        busy_wait_ms(1000);
+        puts("si4707-cpp: loopin'");
+        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        
+        reset_si4707();
+        busy_wait_ms(10);
         bus_scan();
+        
+        // blinky to indicate idle
+        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        busy_wait_ms(500);
+        gpio_put(PICO_DEFAULT_LED_PIN, 0);
+        busy_wait_ms(500);
+        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        busy_wait_ms(500);
+        gpio_put(PICO_DEFAULT_LED_PIN, 0);
+        busy_wait_ms(500);
+        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        busy_wait_ms(500);
+        gpio_put(PICO_DEFAULT_LED_PIN, 0);
+        busy_wait_ms(500);
     }
     
     return 0;
