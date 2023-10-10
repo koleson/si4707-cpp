@@ -24,6 +24,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
+#include "hardware.h"
 
 // I2C reserves some addresses for special purposes. We exclude these from the scan.
 // These are any addresses of the form 000 0xxx or 111 1xxx
@@ -32,13 +33,6 @@ bool reserved_addr(uint8_t addr) {
 }
 
 int bus_scan() {
-    
-#if !defined(i2c_default) || !defined(PICO_DEFAULT_I2C_SDA_PIN) || !defined(PICO_DEFAULT_I2C_SCL_PIN)
-#warning i2c/bus_scan example requires a board with I2C pins
-    puts("Default I2C pins were not defined");
-#else
-
-
     printf("\nI2C Bus Scan\n");
     printf("   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n");
 
@@ -58,12 +52,11 @@ int bus_scan() {
         if (reserved_addr(addr))
             ret = PICO_ERROR_GENERIC;
         else
-            ret = i2c_read_blocking(i2c_default, addr, &rxdata, 1, false);
+            ret = i2c_read_blocking(I2C_PORT, addr, &rxdata, 1, false);
 
         printf(ret < 0 ? "." : "@");
         printf(addr % 16 == 15 ? "\n" : "  ");
     }
     printf("Done.\n");
     return 0;
-#endif
 }
