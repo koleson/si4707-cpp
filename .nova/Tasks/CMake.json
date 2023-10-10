@@ -2,7 +2,7 @@
   "actions" : {
     "build" : {
       "enabled" : true,
-      "script" : "export PICO_SDK_PATH=~\/Documents\/Development\/pico-sdk\n\nmkdir build\n\ncd build\n\ncmake .."
+      "script" : "export PICO_SDK_PATH=~\/Documents\/Development\/pico-sdk\n\nmkdir build\n\ncd build\n\ncmake .. -DCMAKE_BUILD_TYPE=Debug"
     },
     "clean" : {
       "enabled" : true,
