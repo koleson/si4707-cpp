@@ -5,20 +5,7 @@
  */
 
 // Sweep through all 7-bit I2C addresses, to see if any slaves are present on
-// the I2C bus. Print out a table that looks like this:
-//
-// I2C Bus Scan
-//   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-// 0
-// 1       @
-// 2
-// 3             @
-// 4
-// 5
-// 6
-// 7
-//
-// E.g. if slave addresses 0x12 and 0x34 were acknowledged.
+// the I2C bus. 
 
 #include <stdio.h>
 #include "pico/stdlib.h"
