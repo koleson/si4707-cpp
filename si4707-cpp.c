@@ -7,6 +7,7 @@
 #include "bus_scan.h"
 
 #include "hardware.h"
+#include "si4707_const.h"
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     // Put your timeout handler code in here

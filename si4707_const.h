@@ -1,0 +1,3 @@
+#define SI4707_CMD_POWER_UP 	0x01
+#define SI4707_CMD_GET_REV 		0x10
+#define SI4707_CMD_POWER_DN 	0x11

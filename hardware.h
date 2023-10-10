@@ -15,3 +15,6 @@
 #define I2C_SCL 27
 
 #define SI4707_RESET 28
+
+// default 0x63, can be set to 0x11 by pulling SEN low during reset
+#define SI4707_ADDR 0x63
