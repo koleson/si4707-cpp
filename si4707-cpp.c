@@ -282,7 +282,10 @@ int main()
         printf("si4707-cpp: loopin' iteration %d ===================== \n", mainLoops);
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
         
-        // get_si4707_rev();
+        // FIXME:  getting si4707 rev info before checking status
+        // seems to result in the tune being valid more reliably?
+        // kmo 10 oct 2023 21h59
+        get_si4707_rev();
         // bus_scan();
         
         await_si4707_cts();
