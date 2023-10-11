@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include "hardware/gpio.h"
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "hardware/i2c.h"
@@ -34,18 +35,24 @@ void prepare()
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 }
 
-void setup_spi() {
+void setup_si4707_spi() {
     puts("setting up SPI");
     // SPI initialization. This example will use SPI at 100kHz.
-    spi_init(SPI_PORT, 400*1000);
-    gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
-    gpio_set_function(PIN_CS,   GPIO_FUNC_SIO);
-    gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
-    gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
+    // spi_init(SPI_PORT, 400*1000);
+    // gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
+    // gpio_set_function(PIN_CS,   GPIO_FUNC_SIO);
+    // gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
+    // gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
     
+    spi_init(SI4707_SPI_PORT, 400*1000);
+    gpio_set_function(SI4707_SPI_MISO, GPIO_FUNC_SPI);
+    gpio_set_function(SI4707_SPI_CS, GPIO_FUNC_SIO);
+    gpio_set_function(SI4707_SPI_SCK, GPIO_FUNC_SPI);
+    gpio_set_function(SI4707_SPI_MOSI, GPIO_FUNC_SPI);
+
     // Chip select is active-low, so we'll initialize it to a driven-high state
-    gpio_set_dir(PIN_CS, GPIO_OUT);
-    gpio_put(PIN_CS, 1);
+    gpio_set_dir(SI4707_SPI_CS, GPIO_OUT);
+    gpio_put(SI4707_SPI_CS, 1);
 }
 
 void reset_si4707() {
@@ -303,7 +310,7 @@ int main()
     // reset_si4707 ends.  it seems easiest to drive it momentarily to make sure.
     reset_si4707();
     
-    setup_spi();
+    setup_si4707_spi();
     
     power_up_si4707();
     

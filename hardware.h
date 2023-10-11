@@ -8,6 +8,15 @@
 #define PIN_SCK  18
 #define PIN_MOSI 19
 
+#define SI4707_SPI_PORT spi1
+#define SI4707_SPI_MISO 12
+#define SI4707_SPI_CS   13
+#define SI4707_SPI_SCK  10
+#define SI4707_SPI_MOSI 11
+#define SI4707_SPI_GPO2 7
+#define SI4707_SPI_GPO1 12  // SPI mode select
+#define SI4707_SPI_RST  6   // used for all modes but
+
 // I2C defines - not defaults, specific to Wiznet W5500 setup
 // pins 26/27 are on i2c1.
 #define I2C_PORT i2c_default
@@ -16,11 +25,9 @@
 
 
 // Si4707 defines
-#define SI4707_RESET 28
-#define SI4707_INT 22
-#define SI4707_SEN 17
-#define SI4707_GPO1 16
-#define SI4707_GPO2 22
+#define SI4707_RESET 6
+#define SI4707_GPO1 12
+#define SI4707_GPO2 7
 
 // default 0x63, can be set to 0x11 by pulling SEN low during reset
 #define SI4707_ADDR 0x63
