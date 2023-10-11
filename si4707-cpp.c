@@ -93,20 +93,20 @@ void reset_si4707() {
     
 }
 
-static inline void cs_select() {
+static inline void cs_select_si4707() {
     asm volatile("nop \n nop \n nop");
-    gpio_put(PICO_DEFAULT_SPI_CSN_PIN, 0);  // Active low
+    gpio_put(SI4707_SPI_CS, 0);  // Active low
     asm volatile("nop \n nop \n nop");
 }
 
-static inline void cs_deselect() {
+static inline void cs_deselect_si4707() {
     asm volatile("nop \n nop \n nop");
-    gpio_put(PICO_DEFAULT_SPI_CSN_PIN, 1);
+    gpio_put(SI4707_SPI_CS, 1);
     asm volatile("nop \n nop \n nop");
 }
 
 void await_si4707_cts() {
-    //puts("waiting for cts");
+    puts("waiting for cts");
     
     int i = 0;
     char status = 0;
@@ -143,10 +143,10 @@ void power_up_si4707() {
     // 0x05:  analog output mode
     cmd[3] = 0x05;
     
-    cs_select();
+    cs_select_si4707();
     // write 9 bytes - control + cmd + 7 args
-    spi_write_blocking(spi_default, cmd, 9);
-    cs_deselect();
+    spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
+    cs_deselect_si4707();
     
     await_si4707_cts();    
     
@@ -166,9 +166,9 @@ void tune_si4707() {
     cmd[4] = freqLow;
     
     await_si4707_cts();
-    cs_select();
-    spi_write_blocking(spi_default, cmd, 9);
-    cs_deselect();
+    cs_select_si4707();
+    spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
+    cs_deselect_si4707();
     
     // tune status takes a moment to populate, so we don't check it here.
     // kmo 10 oct 20234 21h54
@@ -179,9 +179,9 @@ void send_command(uint8_t cmd) {
     cmd_buf[0] = SI4707_SPI_SEND_CMD;         // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
     cmd_buf[1] = cmd;
     
-    cs_select();
-    spi_write_blocking(spi_default, cmd_buf, 9);
-    cs_deselect();
+    cs_select_si4707();
+    spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
+    cs_deselect_si4707();
     
     await_si4707_cts();
     uint8_t resp_buf[16] = { 0x00 };
@@ -197,10 +197,10 @@ uint8_t read_status() {
     char status_result[1];
     status_result[0] = 0x00;
     
-    cs_select();
-    spi_write_blocking(spi_default, status_cmd, 1);
-    spi_read_blocking(spi_default, 0, status_result, 1);
-    cs_deselect();
+    cs_select_si4707();
+    spi_write_blocking(SI4707_SPI_PORT, status_cmd, 1);
+    spi_read_blocking(SI4707_SPI_PORT, 0, status_result, 1);
+    cs_deselect_si4707();
     
     return status_result[0];
 }
@@ -211,10 +211,10 @@ void read_resp(uint8_t* resp) {
     
     await_si4707_cts();
     
-    cs_select();
-    spi_write_blocking(spi_default, resp_cmd, 1);
-    spi_read_blocking(spi_default, 0, resp, 16);
-    cs_deselect();
+    cs_select_si4707();
+    spi_write_blocking(SI4707_SPI_PORT, resp_cmd, 1);
+    spi_read_blocking(SI4707_SPI_PORT, 0, resp, 16);
+    cs_deselect_si4707();
 }
 
 void get_si4707_rev() {   
