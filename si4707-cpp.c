@@ -10,6 +10,10 @@
 #include "hardware.h"
 #include "si4707_const.h"
 
+#ifndef MIN
+#define MIN(a, b) ((b)>(a)?(a):(b))
+#endif
+
 // TODO:  move us out
 uint8_t read_status();
 void read_resp(uint8_t* resp);
@@ -267,7 +271,12 @@ void print_si4707_same_status() {
         // kmo 10 oct 2023 22h30
         uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
         
-        for (int i = 0; i < message_length; i++) {
+        // for now, read at most 8 bytes of buffer so we don't have to deal with
+        // making multiple requests.
+        int bytesToRead = MIN(message_length, 8);
+        printf("reading %d bytes of SAME buffer\n", bytesToRead);
+        
+        for (int i = 0; i < bytesToRead; i++) {
             same_buf[i] = wb_same_status_resp[i + 6];
         }
         
