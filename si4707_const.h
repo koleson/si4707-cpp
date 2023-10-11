@@ -4,6 +4,9 @@
 
 // Si4707 useful constants
 #define SI4707_STATUS_CTS			0x80
+#define SI4707_SPI_SEND_CMD			0x48
+#define SI4707_SPI_READ1_GPO1		0xA0
+#define SI4707_SPI_READ16_GPO1		0xE0
 
 // Si4707 Commands
 
