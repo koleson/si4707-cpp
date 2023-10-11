@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
@@ -8,6 +9,12 @@
 
 #include "hardware.h"
 #include "si4707_const.h"
+
+// TODO:  move us out
+uint8_t read_status();
+void read_resp(uint8_t* resp);
+// END TODO
+
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     // not really doing anything right now.  just a demo.
@@ -63,11 +70,11 @@ void reset_si4707() {
     sleep_ms(5);
     
     gpio_put(SI4707_RESET, 1);
-    sleep_ms(10);
+    sleep_ms(5);
     
     gpio_put(SI4707_GPO1, 0);
     gpio_put(SI4707_GPO2, 0);
-    sleep_ms(10);
+    sleep_ms(2);
     
     // GPO could be used as INT later
     gpio_deinit(SI4707_GPO1);
@@ -92,26 +99,15 @@ static inline void cs_deselect() {
 }
 
 void await_si4707_cts() {
-    // command: get status byte
-    char status_cmd[1];
-    status_cmd[0] = 0xA0;        // read status byte via GPO1
-    
-    // buffer:  receive powerup status to this buffer
-    char status_result[1];
-    status_result[0] = 0x00;
-    
-    puts("waiting for cts");
+    //puts("waiting for cts");
     
     int i = 0;
-    char status = status_result[0];
-    while ((status_result[0] & 0x80) == 0x00) {
-        cs_select();
-        spi_write_blocking(spi_default, status_cmd, 1);
-        spi_read_blocking(spi_default, 0, status_result, 1);
-        cs_deselect();
+    char status = 0;
+    while ((status & 0x80) == 0x00) {
+        status = read_status();
         
-        status = status_result[0];
-        if (i % 200 == 0 || status != 0) {
+        // only print status if it's taking a long time
+        if (i > 0 && i % 200 == 0) {
             printf("cts waitloop status = %d (i = %d)\n", status, i);
         }
         
@@ -119,14 +115,14 @@ void await_si4707_cts() {
         i++;
     }
     
-    printf("cts waitloop exit status: %d\n\n", status);
+    //printf("cts waitloop exit status: %d\n\n", status);
 }
 
 void power_up_si4707() {
     puts("power_up_si4707");
     // si4707 startup command buffer
-    uint8_t cmd[9];
-    cmd[0] = 0x48;       // write a command (drives 8 bytes on SDIO)
+    uint8_t cmd[9] = { 0x00 };
+    cmd[0] = SI4707_SPI_SEND_CMD;       // write a command (drives 8 bytes on SDIO)
     cmd[1] = SI4707_CMD_POWER_UP;
     
     // 0x53
@@ -139,7 +135,6 @@ void power_up_si4707() {
     
     // 0x05:  analog output mode
     cmd[3] = 0x05;
-    cmd[4] = 0x00; cmd[5] = 0x00; cmd[6] = 0x00; cmd[7] = 0x00; cmd[8] = 0x00;
     
     cs_select();
     // write 9 bytes - control + cmd + 7 args
@@ -151,31 +146,78 @@ void power_up_si4707() {
     sleep_ms(10);
 }
 
-void get_rev() {
-    uint8_t cmd[8];
-    cmd[0] = 0x48;
-    cmd[1] = SI4707_CMD_GET_REV;
-    cmd[2] = 0; cmd[3] = 0; cmd[4] = 0; cmd[5] = 0; cmd[6] = 0; cmd[7] = 0; cmd[8] = 0;
+void tune_si4707() {
+    puts("tuning si4707 to 162.475MHz");
+    uint8_t freqHigh = 0xFD;
+    uint8_t freqLow = 0xDE;
     
-    char product_data[16] = { 0 };
+    uint8_t cmd[9] = { 0x00 };
+    cmd[0] = SI4707_SPI_SEND_CMD;       // write a command (drives 8 bytes on SDIO)
+    cmd[1] = SI4707_CMD_WB_TUNE_FREQ;
+    cmd[2] = 0x00;                      // AN332 page 180 - reserved, always write 0, no meaning
+    cmd[3] = freqHigh;
+    cmd[4] = freqLow;
     
     await_si4707_cts();
-    
-    puts("getting rev");
-    
     cs_select();
     spi_write_blocking(spi_default, cmd, 9);
     cs_deselect();
     
+    // tune status takes a moment to populate, so we don't check it here.
+    // kmo 10 oct 20234 21h54
+}
+
+void send_command(uint8_t cmd) {
+    uint8_t cmd_buf[9] = { 0x00 };
+    cmd_buf[0] = SI4707_SPI_SEND_CMD;         // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
+    cmd_buf[1] = cmd;
+    
+    cs_select();
+    spi_write_blocking(spi_default, cmd_buf, 9);
+    cs_deselect();
+    
     await_si4707_cts();
-   
-    char resp_cmd[1];
+    uint8_t resp_buf[16] = { 0x00 };
+    read_resp(resp_buf);
+    
+}
+
+uint8_t read_status() {
+    char status_cmd[1];
+    status_cmd[0] = 0xA0;        // read status byte via GPO1
+    
+    // buffer:  receive powerup status to this buffer
+    char status_result[1];
+    status_result[0] = 0x00;
+    
+    cs_select();
+    spi_write_blocking(spi_default, status_cmd, 1);
+    spi_read_blocking(spi_default, 0, status_result, 1);
+    cs_deselect();
+    
+    return status_result[0];
+}
+
+void read_resp(uint8_t* resp) {
+    uint8_t resp_cmd[1];
     resp_cmd[0] = 0xE0;        // read 16 response bytes via GPO1
-   
+    
     cs_select();
     spi_write_blocking(spi_default, resp_cmd, 1);
-    spi_read_blocking(spi_default, 0, product_data, 16);
+    spi_read_blocking(spi_default, 0, resp, 16);
     cs_deselect();
+}
+
+void get_si4707_rev() {   
+    char product_data[16] = { 0 };
+    
+    await_si4707_cts();
+    
+    send_command(SI4707_CMD_GET_REV);
+    
+    await_si4707_cts();
+   
+    read_resp(product_data);
     
     uint8_t pn = product_data[1];
     printf("product number: %d\n", pn);
@@ -219,36 +261,43 @@ int main()
     reset_si4707();
     
     setup_spi();
-    sleep_ms(50);
     
     power_up_si4707();
     
-    get_rev();
+    get_si4707_rev();
+    
+    tune_si4707();
+    
     
     // setup_i2c();
     
     // test hardware timer
     // add_alarm_in_ms(20000, alarm_callback, NULL, false);
-        
+    
+    puts("LOOP TIME! ======");
+    
+    int mainLoops = 0;
+    
     while(true) {
-        puts("si4707-cpp: loopin'");
+        printf("si4707-cpp: loopin' iteration %d ===================== \n", mainLoops);
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
         
+        // get_si4707_rev();
         // bus_scan();
         
-        // blinky to indicate idle
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
-        busy_wait_ms(500);
+        await_si4707_cts();
+        uint8_t status = read_status();
+        
+        if (status & 0x01) {
+            puts("tune valid");
+        } else {
+            puts("tune invalid :(");
+            printf("(status %d)\n", status);
+        }
+        
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
-        busy_wait_ms(500);
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
-        busy_wait_ms(500);
-        gpio_put(PICO_DEFAULT_LED_PIN, 0);
-        busy_wait_ms(500);
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
-        busy_wait_ms(500);
-        gpio_put(PICO_DEFAULT_LED_PIN, 0);
-        busy_wait_ms(500);
+        busy_wait_ms(1000);
+        mainLoops++;
     }
     
     return 0;
