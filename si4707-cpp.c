@@ -202,6 +202,8 @@ void read_resp(uint8_t* resp) {
     uint8_t resp_cmd[1];
     resp_cmd[0] = 0xE0;        // read 16 response bytes via GPO1
     
+    await_si4707_cts();
+    
     cs_select();
     spi_write_blocking(spi_default, resp_cmd, 1);
     spi_read_blocking(spi_default, 0, resp, 16);
@@ -228,8 +230,49 @@ void get_si4707_rev() {
             busy_wait_ms(100000);
         }
     }
+}
+
+void print_si4707_rsq() {
+    uint8_t wb_rsq_resp[16] = { 0x00 };
+    send_command(SI4707_CMD_WB_RSQ_STATUS);
+    read_resp(wb_rsq_resp);
+    uint8_t valid = wb_rsq_resp[2] & 0x01;
+    uint8_t rssi = wb_rsq_resp[4];
+    uint8_t snr = wb_rsq_resp[5];
     
-    puts("\n");
+    puts("VALID  RSSI  SNR");
+    printf("%5d  %4d  %3d\n\n", valid, rssi, snr);
+}
+
+void print_si4707_same_status() {
+    uint8_t wb_same_status_resp[16] = { 0x00 };
+    send_command(SI4707_CMD_WB_SAME_STATUS);
+    read_resp(wb_same_status_resp);
+    
+    uint8_t end_of_message_detected     = wb_same_status_resp[1] & 0x08;
+    uint8_t start_of_message_detected   = wb_same_status_resp[1] & 0x04;
+    uint8_t preamble_detected           = wb_same_status_resp[1] & 0x02;
+    uint8_t header_ready                = wb_same_status_resp[1] & 0x01;
+    uint8_t state                       = wb_same_status_resp[2];
+    uint8_t message_length              = wb_same_status_resp[3];
+    
+    puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
+    printf("%6d %6d %6d %6d %5d %6d\n", 
+                end_of_message_detected, start_of_message_detected, preamble_detected, 
+                header_ready, state, message_length);
+                
+    if (true) { // (message_length > 0) {
+        // TODO:  this is where we have to send multiple messages with differing params
+        // (need to set offset into buffer for read)
+        // kmo 10 oct 2023 22h30
+        uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
+        
+        for (int i = 0; i < message_length; i++) {
+            same_buf[i] = wb_same_status_resp[i + 6];
+        }
+        
+        printf("SAME buffer: '%s'\n\n", same_buf);
+    }
 }
 
 void setup_i2c()
@@ -297,6 +340,9 @@ int main()
             puts("tune invalid :(");
             printf("(status %d)\n", status);
         }
+        
+        print_si4707_rsq();
+        print_si4707_same_status();
         
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
         busy_wait_ms(1000);
