@@ -13,6 +13,9 @@
 #include "hardware/i2c.h"
 #include "hardware.h"
 
+// milliseconds to wait for i2c return
+#define I2C_PATIENCE 50
+
 // I2C reserves some addresses for special purposes. We exclude these from the scan.
 // These are any addresses of the form 000 0xxx or 111 1xxx
 bool reserved_addr(uint8_t addr) {
@@ -36,11 +39,20 @@ int bus_scan() {
         // Skip over any reserved addresses.
         int ret;
         uint8_t rxdata;
-        if (reserved_addr(addr))
+        
+        if (reserved_addr(addr)) {
             ret = PICO_ERROR_GENERIC;
-        else
-            ret = i2c_read_blocking(I2C_PORT, addr, &rxdata, 1, false);
-
+        }
+        else {
+            // original version
+            //ret = i2c_read_blocking(I2C_PORT, addr, &rxdata, 1, false);
+            
+            // timeout'd version
+            absolute_time_t absolute_time = get_absolute_time();
+            absolute_time_t patience_time = delayed_by_ms(absolute_time, I2C_PATIENCE);
+            ret = i2c_read_blocking_until(I2C_PORT, addr, &rxdata, 1, false, patience_time);
+        }
+           
         printf(ret < 0 ? "." : "@");
         printf(addr % 16 == 15 ? "\n" : "  ");
     }
