@@ -118,7 +118,7 @@ void power_up_si4707() {
 	
 	si4707_cs_select();
 	// write 9 bytes - control + cmd + 7 args
-	spi_write_blocking(spi_default, cmd, 9);
+	spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
 	si4707_cs_deselect();
 	
 	await_si4707_cts();    
@@ -140,7 +140,7 @@ void tune_si4707() {
 	
 	await_si4707_cts();
 	si4707_cs_select();
-	spi_write_blocking(spi_default, cmd, 9);
+	spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
 	si4707_cs_deselect();
 	
 	// tune status takes a moment to populate, so we don't check it here.
@@ -153,7 +153,7 @@ void send_command(uint8_t cmd) {
 	cmd_buf[1] = cmd;
 	
 	si4707_cs_select();
-	spi_write_blocking(spi_default, cmd_buf, 9);
+	spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
 	si4707_cs_deselect();
 	
 	await_si4707_cts();
@@ -171,8 +171,8 @@ uint8_t read_status() {
 	status_result[0] = 0x00;
 	
 	si4707_cs_select();
-	spi_write_blocking(spi_default, status_cmd, 1);
-	spi_read_blocking(spi_default, 0, status_result, 1);
+	spi_write_blocking(SI4707_SPI_PORT, status_cmd, 1);
+	spi_read_blocking(SI4707_SPI_PORT, 0, status_result, 1);
 	si4707_cs_deselect();
 	
 	return status_result[0];
@@ -185,8 +185,8 @@ void read_resp(uint8_t* resp) {
 	await_si4707_cts();
 	
 	si4707_cs_select();
-	spi_write_blocking(spi_default, resp_cmd, 1);
-	spi_read_blocking(spi_default, 0, resp, 16);
+	spi_write_blocking(SI4707_SPI_PORT, resp_cmd, 1);
+	spi_read_blocking(SI4707_SPI_PORT, 0, resp, 16);
 	si4707_cs_deselect();
 }
 
