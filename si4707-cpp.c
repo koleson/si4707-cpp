@@ -48,8 +48,6 @@ void setup_i2c()
     gpio_pull_up(I2C_SCL);
 }
 
-
-
 int main()
 {
     prepare();
@@ -85,7 +83,7 @@ int main()
     // test hardware timer
     // add_alarm_in_ms(20000, alarm_callback, NULL, false);
     
-    puts("LOOP TIME! ======");
+    puts("oneshot done - LOOP TIME! ======");
     
     int main_loops = 0;
     int outer_loops_since_last_heartbeat = 0;
@@ -108,7 +106,6 @@ int main()
             outer_loops_since_last_heartbeat = 0;
             puts("heartbeating");
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            
             
             uint8_t rssi = 0;
             uint8_t snr = 0;
