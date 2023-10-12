@@ -13,6 +13,8 @@
 #include "si4707.h"
 #include "mqtt-publisher.h"
 
+bool g_Si4707_booted_successfully = false;
+
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     // not really doing anything right now.  just a demo.
     puts("alarm_callback!");
@@ -47,6 +49,7 @@ void setup_i2c()
 }
 
 
+
 int main()
 {
     prepare();
@@ -71,6 +74,8 @@ int main()
         puts("si4707 CTS - getting rev and tuning");
         get_si4707_rev();
         tune_si4707();
+        
+        g_Si4707_booted_successfully = true;
     } else {
         puts("failed to start si4707 :(");
     }
@@ -89,33 +94,37 @@ int main()
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
         
         // bus_scan();
-        bool rev_cts = await_si4707_cts(100);
-        if (rev_cts) {
-            // FIXME:  getting si4707 rev info before checking status
-            // seems to result in the tune being valid more reliably?
-            // kmo 10 oct 2023 21h59
-            get_si4707_rev();
-        }
-        
-        bool cts = await_si4707_cts(100);
-        if (cts) {
-            uint8_t status = read_status();
-            
-            if (status & 0x01) {
-                puts("tune valid");
-            } else {
-                puts("tune invalid :(");
-                printf("(status %d)\n", status);
+        if (g_Si4707_booted_successfully) {
+            bool rev_cts = await_si4707_cts(100);
+            if (rev_cts) {
+                // FIXME:  getting si4707 rev info before checking status
+                // seems to result in the tune being valid more reliably?
+                // kmo 10 oct 2023 21h59
+                get_si4707_rev();
             }
             
-            print_si4707_rsq();
-            print_si4707_same_status();
-        } else {
-            puts("RSQ/SAME status CTS timed out :(");
+            bool cts = await_si4707_cts(100);
+            if (cts) {
+                uint8_t status = read_status();
+                
+                if (status & 0x01) {
+                    puts("tune valid");
+                } else {
+                    puts("tune invalid :(");
+                    printf("(status %d)\n", status);
+                }
+                
+                print_si4707_rsq();
+                print_si4707_same_status();
+            } else {
+                puts("RSQ/SAME status CTS timed out :(");
+            }
         }
+       
         
         
-        publish_helloworld();
+        // publish_helloworld();
+        publish_heartbeat(mainLoops, g_Si4707_booted_successfully);
         
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
         busy_wait_ms(1000);

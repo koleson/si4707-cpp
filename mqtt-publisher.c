@@ -275,6 +275,43 @@ int publish_helloworld()
 	return mqtt_retval;
 }
 
+int publish_heartbeat(int i, bool si4707_started) {
+	puts("publish_heartbeat()");
+	int mqtt_retval = 0;
+	
+	char payload[64];
+	
+	sprintf(payload, "{ \"iteration\": %d, \"si4707_booted\": %s }", i, (si4707_started ? "true" : "false"));
+	/* Configure publish message */
+	g_mqtt_message.qos = QOS0;
+	g_mqtt_message.retained = 0;
+	g_mqtt_message.dup = 0;
+	g_mqtt_message.payload = payload;
+	g_mqtt_message.payloadlen = strlen(g_mqtt_message.payload);
+	
+	char topic[64];
+	sprintf(topic, "%s/heartbeat", MQTT_PUBLISH_TOPIC);
+	/* Publish */
+	mqtt_retval = MQTTPublish(&g_mqtt_client, topic, &g_mqtt_message);
+	
+	if (mqtt_retval < 0)
+	{
+		printf(" Publish failed : %d\n", mqtt_retval);
+		return mqtt_retval;
+	}
+	
+	printf(" Published (%d)\n", mqtt_retval);
+	
+	if ((mqtt_retval = MQTTYield(&g_mqtt_client, g_mqtt_packet_connect_data.keepAliveInterval)) < 0)
+	{
+		printf(" Yield error : %d\n", mqtt_retval);
+	
+		return mqtt_retval;
+	}
+	
+	return mqtt_retval;
+}
+
 /* Clock */
 static void set_clock_khz(void)
 {

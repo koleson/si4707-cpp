@@ -12,3 +12,8 @@ void get_si4707_rev();
 void tune_si4707();
 void print_si4707_rsq();
 void print_si4707_same_status();
+
+// TODO:
+
+// make a struct for RSQ data
+// make a struct for SAME data
