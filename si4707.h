@@ -4,7 +4,7 @@ void setup_si4707_spi();
 
 // some of this should be private
 void reset_si4707();
-void await_si4707_cts();
+bool await_si4707_cts(int maxWait);
 uint8_t read_status();
 void read_resp(uint8_t* resp);
 void power_up_si4707();

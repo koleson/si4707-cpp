@@ -9,6 +9,8 @@
 #define MIN(a, b) ((b)>(a)?(a):(b))
 #endif
 
+#define CTS_WAIT 250
+
 // TODO:  parameterize - take in MOSI, MISO, CS, SCK
 void setup_si4707_spi() {
 	puts("setting up SPI");
@@ -78,12 +80,12 @@ void reset_si4707() {
 	puts("done resetting Si4707");
 }
 
-void await_si4707_cts() {
+bool await_si4707_cts(int maxWait) {
 	//puts("waiting for cts");
 	
 	int i = 0;
 	char status = 0;
-	while ((status & 0x80) == 0x00) {
+	while ((status & 0x80) == 0x00 && i < maxWait) {
 		status = read_status();
 		
 		// only print status if it's taking a long time
@@ -93,6 +95,14 @@ void await_si4707_cts() {
 		
 		sleep_ms(5);
 		i++;
+	}
+	
+	if (status & 0x80) {
+		return true;
+	} else {
+		// timed out :(
+		printf("cts waitloop timed out (%d patience)\n", maxWait);
+		return false;
 	}
 	
 	//printf("cts waitloop exit status: %d\n\n", status);
@@ -121,7 +131,7 @@ void power_up_si4707() {
 	spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
 	si4707_cs_deselect();
 	
-	await_si4707_cts();    
+	await_si4707_cts(CTS_WAIT); 
 	
 	sleep_ms(10);
 }
@@ -138,10 +148,15 @@ void tune_si4707() {
 	cmd[3] = freqHigh;
 	cmd[4] = freqLow;
 	
-	await_si4707_cts();
-	si4707_cs_select();
-	spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
-	si4707_cs_deselect();
+	bool cts = await_si4707_cts(CTS_WAIT);
+	if (cts) {
+		si4707_cs_select();
+		spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
+		si4707_cs_deselect();
+	} else {
+		puts("could not tune - CTS timeout");
+	}
+	
 	
 	// tune status takes a moment to populate, so we don't check it here.
 	// kmo 10 oct 20234 21h54
@@ -156,9 +171,13 @@ void send_command(uint8_t cmd) {
 	spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
 	si4707_cs_deselect();
 	
-	await_si4707_cts();
-	uint8_t resp_buf[16] = { 0x00 };
-	read_resp(resp_buf);
+	bool cts = await_si4707_cts(CTS_WAIT);
+	if (cts) {
+		uint8_t resp_buf[16] = { 0x00 };
+		read_resp(resp_buf);
+	} else {
+		printf("could not send command %02x - CTS timeout\n", cmd);
+	}
 	
 }
 
@@ -182,33 +201,45 @@ void read_resp(uint8_t* resp) {
 	uint8_t resp_cmd[1];
 	resp_cmd[0] = 0xE0;        // read 16 response bytes via GPO1
 	
-	await_si4707_cts();
-	
-	si4707_cs_select();
-	spi_write_blocking(SI4707_SPI_PORT, resp_cmd, 1);
-	spi_read_blocking(SI4707_SPI_PORT, 0, resp, 16);
-	si4707_cs_deselect();
+
+	bool cts = await_si4707_cts(CTS_WAIT);
+	if (cts) {
+		si4707_cs_select();
+		spi_write_blocking(SI4707_SPI_PORT, resp_cmd, 1);
+		spi_read_blocking(SI4707_SPI_PORT, 0, resp, 16);
+		si4707_cs_deselect();
+	} else {
+		puts("could not read response - CTS timeout");
+	}
 }
 
 void get_si4707_rev() {   
 	char product_data[16] = { 0 };
 	
-	await_si4707_cts();
+	bool cts_cmd = await_si4707_cts(CTS_WAIT);
+	if (cts_cmd) {
+		send_command(SI4707_CMD_GET_REV);
+	} else {
+		puts("could not request product info - CTS timeout");
+		return;
+	}
 	
-	send_command(SI4707_CMD_GET_REV);
-	
-	await_si4707_cts();
-   
-	read_resp(product_data);
-	
-	uint8_t pn = product_data[1];
-	printf("product number: %d\n", pn);
-	
-	if (pn != 7) {
-		printf("product number invalid - halting");
-		while (true) {
-			busy_wait_ms(100000);
+	bool cts_read = await_si4707_cts(CTS_WAIT);
+	if (cts_read) {
+		read_resp(product_data);
+		
+		uint8_t pn = product_data[1];
+		printf("product number: %d\n", pn);
+		
+		if (pn != 7) {
+			printf("product number invalid - halting\n\n");
+			while (true) {
+				busy_wait_ms(100000);
+			}
 		}
+	} else {
+		puts("could not read product info - CTS timeout");
+		return;
 	}
 }
 

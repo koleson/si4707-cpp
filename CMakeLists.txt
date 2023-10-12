@@ -65,6 +65,7 @@ add_definitions(-DSET_TRUSTED_CERT_IN_SAMPLES)
 # Add libraries in subdirectories
 add_subdirectory(${CMAKE_SOURCE_DIR}/libraries)
 # add_subdirectory(${MBEDTLS_DIR})
+add_subdirectory(${PORT_DIR})
     
 # END:  WIZNET
 
@@ -102,8 +103,11 @@ target_link_libraries(si4707-cpp
         hardware_timer
         hardware_clocks
         ETHERNET_FILES
-#        IOLIBRARY_FILES
+        IOLIBRARY_FILES
         MQTT_FILES
+        DHCP_FILES
+        DNS_FILES
+        TIMER_FILES
         )
 
 pico_add_extra_outputs(si4707-cpp)
