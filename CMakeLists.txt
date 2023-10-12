@@ -9,7 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 # (note this can come from environment, CMake cache etc)
 set(PICO_SDK_PATH "/Users/koleson/Documents/Development/pico-sdk")
 
-set(PICO_BOARD pico CACHE STRING "Board type")
+# set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD wiznet_w5100s_evb_pico CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -27,7 +28,9 @@ pico_sdk_init()
 
 add_executable(si4707-cpp 
                 si4707-cpp.c
-                bus_scan.c )
+                bus_scan.c
+                si4707.c
+                )
 
 pico_set_program_name(si4707-cpp "si4707-cpp")
 pico_set_program_version(si4707-cpp "0.1")
@@ -37,7 +40,9 @@ pico_enable_stdio_usb(si4707-cpp 1)
 
 # Add the standard library to the build
 target_link_libraries(si4707-cpp
-        pico_stdlib)
+        pico_stdlib
+        hardware_spi
+        hardware_dma)
 
 # Add the standard include files to the build
 target_include_directories(si4707-cpp PRIVATE
