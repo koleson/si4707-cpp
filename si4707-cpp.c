@@ -87,7 +87,8 @@ int main()
     
     puts("LOOP TIME! ======");
     
-    int mainLoops = 0;
+    int main_loops = 0;
+    int outer_loops_since_last_heartbeat = 0;
     uint64_t last_heartbeat = 0;
     
     static uint64_t heartbeat_interval = 10000000;  // 10000000 microseconds = 10 seconds
@@ -95,12 +96,16 @@ int main()
     while(true) {
         // TODO: check status registers for interesting things here and force a
         // mqtt message or heartbeat if anything interesting happens
-        puts("outerloop");
+        if (outer_loops_since_last_heartbeat % 100 == 0) {
+            printf("outerloop %d\n", outer_loops_since_last_heartbeat);
+        }
+        
         
         uint64_t now = time_us_64();
         uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
         if (microseconds_since_last_heartbeat > heartbeat_interval) {
             last_heartbeat = now;
+            outer_loops_since_last_heartbeat = 0;
             puts("heartbeating");
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             
@@ -139,7 +144,7 @@ int main()
             }
             
             struct Si4707_Heartbeat heartbeat;
-            heartbeat.iteration = mainLoops;
+            heartbeat.iteration = main_loops;
             heartbeat.si4707_started = g_Si4707_booted_successfully;
             heartbeat.rssi = rssi;
             heartbeat.snr = snr;
@@ -149,12 +154,13 @@ int main()
             publish_heartbeat(&heartbeat);
             
             gpio_put(PICO_DEFAULT_LED_PIN, 0);
-            mainLoops++;
+            main_loops++;
         }
         
         // TODO:  remove this once outer loop is 
         // "safe"
-        busy_wait_ms(250);
+        busy_wait_ms(10);
+        outer_loops_since_last_heartbeat++;
        
     }
     
