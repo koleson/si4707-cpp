@@ -112,3 +112,7 @@ target_link_libraries(si4707-cpp
 
 pico_add_extra_outputs(si4707-cpp)
 
+# Set compile options
+add_compile_options(
+        -Wall
+        )

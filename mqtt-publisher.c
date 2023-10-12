@@ -14,6 +14,7 @@
 #include "dns.h"
 
 #include "timer.h"
+#include "si4707.h"
 
 /* Clock */
 #define PLL_SYS_KHZ (133 * 1000)
@@ -275,13 +276,13 @@ int publish_helloworld()
 	return mqtt_retval;
 }
 
-int publish_heartbeat(int i, bool si4707_started) {
-	puts("publish_heartbeat()");
+int publish_heartbeat(struct Si4707_Heartbeat *heartbeat) {
 	int mqtt_retval = 0;
 	
-	char payload[64];
+	char payload[256] = { 0x00 };
+	sprintf(payload, "{ \"iteration\": %d, \"si4707_booted\": %s, \"rssi\": %d, \"snr\": %d }", 
+	 					heartbeat->iteration, (heartbeat->si4707_started ? "true" : "false"), heartbeat->rssi, heartbeat->snr);
 	
-	sprintf(payload, "{ \"iteration\": %d, \"si4707_booted\": %s }", i, (si4707_started ? "true" : "false"));
 	/* Configure publish message */
 	g_mqtt_message.qos = QOS0;
 	g_mqtt_message.retained = 0;
@@ -289,7 +290,7 @@ int publish_heartbeat(int i, bool si4707_started) {
 	g_mqtt_message.payload = payload;
 	g_mqtt_message.payloadlen = strlen(g_mqtt_message.payload);
 	
-	char topic[64];
+	char topic[32];
 	sprintf(topic, "%s/heartbeat", MQTT_PUBLISH_TOPIC);
 	/* Publish */
 	mqtt_retval = MQTTPublish(&g_mqtt_client, topic, &g_mqtt_message);
@@ -300,7 +301,7 @@ int publish_heartbeat(int i, bool si4707_started) {
 		return mqtt_retval;
 	}
 	
-	printf(" Published (%d)\n", mqtt_retval);
+	printf("Heartbeat Published (%d)\n", mqtt_retval);
 	
 	if ((mqtt_retval = MQTTYield(&g_mqtt_client, g_mqtt_packet_connect_data.keepAliveInterval)) < 0)
 	{

@@ -88,47 +88,74 @@ int main()
     puts("LOOP TIME! ======");
     
     int mainLoops = 0;
+    uint64_t last_heartbeat = 0;
+    
+    static uint64_t heartbeat_interval = 10000000;  // 10000000 microseconds = 10 seconds
     
     while(true) {
-        printf("si4707-cpp: loopin' iteration %d ===================== \n", mainLoops);
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        // TODO: check status registers for interesting things here and force a
+        // mqtt message or heartbeat if anything interesting happens
+        puts("outerloop");
         
-        // bus_scan();
-        if (g_Si4707_booted_successfully) {
-            bool rev_cts = await_si4707_cts(100);
-            if (rev_cts) {
-                // FIXME:  getting si4707 rev info before checking status
-                // seems to result in the tune being valid more reliably?
-                // kmo 10 oct 2023 21h59
-                get_si4707_rev();
-            }
+        uint64_t now = time_us_64();
+        uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
+        if (microseconds_since_last_heartbeat > heartbeat_interval) {
+            last_heartbeat = now;
+            puts("heartbeating");
+            gpio_put(PICO_DEFAULT_LED_PIN, 1);
             
-            bool cts = await_si4707_cts(100);
-            if (cts) {
-                uint8_t status = read_status();
-                
-                if (status & 0x01) {
-                    puts("tune valid");
-                } else {
-                    puts("tune invalid :(");
-                    printf("(status %d)\n", status);
+            
+            uint8_t rssi = 0;
+            uint8_t snr = 0;
+            bool tune_valid = false;
+            
+            // bus_scan();
+            if (g_Si4707_booted_successfully) {
+                bool rev_cts = await_si4707_cts(100);
+                if (rev_cts) {
+                    // FIXME:  getting si4707 rev info before checking status
+                    // seems to result in the tune being valid more reliably?
+                    // kmo 10 oct 2023 21h59
+                    get_si4707_rev();
                 }
                 
-                print_si4707_rsq();
-                print_si4707_same_status();
-            } else {
-                puts("RSQ/SAME status CTS timed out :(");
+                bool cts = await_si4707_cts(100);
+                if (cts) {
+                    uint8_t status = read_status();
+                    
+                    if (status & 0x01) {
+                        puts("tune valid");
+                        tune_valid = true;
+                    } else {
+                        puts("tune invalid :(");
+                        printf("(status %d)\n", status);
+                    }
+                    
+                    print_si4707_rsq();
+                    print_si4707_same_status();
+                } else {
+                    puts("RSQ/SAME status CTS timed out :(");
+                }
             }
+            
+            struct Si4707_Heartbeat heartbeat;
+            heartbeat.iteration = mainLoops;
+            heartbeat.si4707_started = g_Si4707_booted_successfully;
+            heartbeat.rssi = rssi;
+            heartbeat.snr = snr;
+            heartbeat.tune_valid = tune_valid;
+            
+            // publish_helloworld();
+            publish_heartbeat(&heartbeat);
+            
+            gpio_put(PICO_DEFAULT_LED_PIN, 0);
+            mainLoops++;
         }
+        
+        // TODO:  remove this once outer loop is 
+        // "safe"
+        busy_wait_ms(250);
        
-        
-        
-        // publish_helloworld();
-        publish_heartbeat(mainLoops, g_Si4707_booted_successfully);
-        
-        gpio_put(PICO_DEFAULT_LED_PIN, 0);
-        busy_wait_ms(1000);
-        mainLoops++;
     }
     
     return 0;
