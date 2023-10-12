@@ -243,7 +243,18 @@ void get_si4707_rev() {
 	}
 }
 
+void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
+	uint8_t wb_rsq_resp[16] = { 0x00 };
+	send_command(SI4707_CMD_WB_RSQ_STATUS);
+	read_resp(wb_rsq_resp);
+	uint8_t valid = wb_rsq_resp[2] & 0x01;
+	uint8_t rssi = wb_rsq_resp[4];
+	uint8_t snr = wb_rsq_resp[5];
+
+}
+
 void print_si4707_rsq() {
+	// TODO:  make this use get_si4707_rsq instead of duplicating code
 	uint8_t wb_rsq_resp[16] = { 0x00 };
 	send_command(SI4707_CMD_WB_RSQ_STATUS);
 	read_resp(wb_rsq_resp);

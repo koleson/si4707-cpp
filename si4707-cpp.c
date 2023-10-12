@@ -107,9 +107,11 @@ int main()
             puts("heartbeating");
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             
-            uint8_t rssi = 0;
-            uint8_t snr = 0;
-            bool tune_valid = false;
+            struct Si4707_Heartbeat heartbeat;
+            heartbeat.iteration = main_loops;
+            heartbeat.si4707_started = g_Si4707_booted_successfully;
+            heartbeat.rssi = 0;
+            heartbeat.snr = 0;
             
             // bus_scan();
             if (g_Si4707_booted_successfully) {
@@ -127,25 +129,28 @@ int main()
                     
                     if (status & 0x01) {
                         puts("tune valid");
-                        tune_valid = true;
+                        heartbeat.tune_valid = true;
                     } else {
                         puts("tune invalid :(");
                         printf("(status %d)\n", status);
+                        heartbeat.tune_valid = false;
                     }
                     
                     print_si4707_rsq();
                     print_si4707_same_status();
+                    
+                    struct Si4707_RSQ_Status rsq_status;
+                    get_si4707_rsq(&rsq_status);
+                    
+                    heartbeat.snr = rsq_status.ASNR;
+                    heartbeat.rssi = rsq_status.RSSI;
+                    
                 } else {
                     puts("RSQ/SAME status CTS timed out :(");
                 }
             }
             
-            struct Si4707_Heartbeat heartbeat;
-            heartbeat.iteration = main_loops;
-            heartbeat.si4707_started = g_Si4707_booted_successfully;
-            heartbeat.rssi = rssi;
-            heartbeat.snr = snr;
-            heartbeat.tune_valid = tune_valid;
+            
             
             // publish_helloworld();
             publish_heartbeat(&heartbeat);
