@@ -250,7 +250,9 @@ void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t valid = wb_rsq_resp[2] & 0x01;
 	uint8_t rssi = wb_rsq_resp[4];
 	uint8_t snr = wb_rsq_resp[5];
-
+	
+	rsq_status->RSSI = rssi;
+	rsq_status->ASNR = snr;
 }
 
 void print_si4707_rsq() {
