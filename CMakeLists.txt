@@ -7,7 +7,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
-set(PICO_SDK_PATH "/Users/koleson/Documents/Development/pico-sdk")
+
+if(NOT DEFINED ENV{PICO_SDK_PATH})
+    MESSAGE(STATUS "pico sdk not set in environment - using macOS default")
+    set(PICO_SDK_PATH "/Users/koleson/Documents/Development/pico-sdk")
+else()
+    MESSAGE(STATUS "Using system-defined pico SDK: $ENV{PICO_SDK_PATH}")
+endif()
 
 # set(PICO_BOARD pico CACHE STRING "Board type")
 set(PICO_BOARD wiznet_w5100s_evb_pico CACHE STRING "Board type")
