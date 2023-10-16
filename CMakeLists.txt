@@ -108,6 +108,7 @@ target_link_libraries(si4707-cpp
         hardware_i2c
         hardware_timer
         hardware_clocks
+	pico_unique_id
         ETHERNET_FILES
         IOLIBRARY_FILES
         MQTT_FILES

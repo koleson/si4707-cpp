@@ -7,6 +7,8 @@
 #include "hardware/clocks.h"
 #include "bus_scan.h"
 
+#include "pico/unique_id.h"
+
 #include "hardware.h"
 #include "si4707_const.h"
 
@@ -53,10 +55,27 @@ int main()
     prepare();
     
     // must `prepare` before trying to print this message.  kmo 9 oct 2023 17h29
-    puts("si4707-cpp: main() 11 oct 17h31");
+    puts("si4707-cpp: main()");
     
+    pico_unique_board_id_t board_id;
+    pico_get_unique_board_id(&board_id);
+
+    printf("====== board ID: %llx\n", board_id);
+    printf("===== bytes: %02x %02x [...] %02x %02x ==========\n\n", board_id.id[0], board_id.id[1], board_id.id[6], board_id.id[7]);
+    printf("proposed MAC ending: %02x:%02x\n", board_id.id[5], board_id.id[4]);
+    for (int len = 0; len < 8; len++) {
+            printf("%d: %02X /", len, board_id.id[len]);
+    }
+    
+    printf("\n\n\n");
+    // fflush(stdout);
+    printf("initializing MQTT...\n");
+    puts("sleeping before init_mqtt");
+    sleep_ms(10);
+    puts("done sleeping before init_mqtt");
     init_mqtt();
-    
+    printf("... done initializing MQTT");
+
     // resetting to SPI mode requires
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
     // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
@@ -89,7 +108,7 @@ int main()
     int outer_loops_since_last_heartbeat = 0;
     uint64_t last_heartbeat = 0;
     
-    static uint64_t heartbeat_interval = 10000000;  // 10000000 microseconds = 10 seconds
+    static uint64_t heartbeat_interval = 5000000;  // 5000000 microseconds = 5 seconds
     
     while(true) {
         // TODO: check status registers for interesting things here and force a
