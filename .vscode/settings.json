@@ -17,4 +17,6 @@
       "visibility": "hidden"
                },
      },
+  "cmake.buildBeforeRun": true,
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
