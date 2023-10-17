@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+
 #include "si4707_const.h"
 #include "hardware.h"
 #include "pico/stdlib.h"
@@ -255,51 +257,106 @@ void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	rsq_status->ASNR = snr;
 }
 
-void print_si4707_rsq() {
-	// TODO:  make this use get_si4707_rsq instead of duplicating code
-	uint8_t wb_rsq_resp[16] = { 0x00 };
-	send_command(SI4707_CMD_WB_RSQ_STATUS);
-	read_resp(wb_rsq_resp);
-	uint8_t valid = wb_rsq_resp[2] & 0x01;
-	uint8_t rssi = wb_rsq_resp[4];
-	uint8_t snr = wb_rsq_resp[5];
+void print_si4707_rsq() 
+{
+	struct Si4707_RSQ_Status status;
+	get_si4707_rsq(&status);
+	puts("RSSI  SNR");
+	printf("%4d  %3d\n\n", status.RSSI, status.ASNR);
+}
+
+void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params, 
+							struct Si4707_SAME_Status_Packet *packet) {
+	uint8_t wb_same_resp[16] = { 0x00 };
+	// TODO:  pass in params!
+	send_command(SI4707_CMD_WB_SAME_STATUS);
+	read_resp(wb_same_resp);
 	
-	puts("VALID  RSSI  SNR");
-	printf("%5d  %4d  %3d\n\n", valid, rssi, snr);
+	// byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
+	packet->CTS = 			((wb_same_resp[0] & 0x80) != 0);
+	packet->ERR = 			((wb_same_resp[0] & 0x40) != 0);
+	// empty 0x10, 0x20
+	packet->RSQINT = 		((wb_same_resp[0] & 0x08) != 0);
+	packet->SAMEINT = 		((wb_same_resp[0] & 0x04) != 0);
+	packet->ASQINT = 		((wb_same_resp[0] & 0x02) != 0);
+	packet->STCINT = 		((wb_same_resp[0] & 0x01) != 0);
+
+	// byte 1:  -/-/-/-/EOMDET/SOMDET/PREDET/HDRRDY
+	packet->EOMDET =	((wb_same_resp[1] & 0x08) != 0);
+	packet->SOMDET =	((wb_same_resp[1] & 0x04) != 0);
+	packet->PREDET =	((wb_same_resp[1] & 0x02) != 0);
+	packet->HDRRDY =	((wb_same_resp[1] & 0x01) != 0);
+
+	packet->STATE = 	wb_same_resp[2];
+	packet->MSGLEN = 	wb_same_resp[3];
+	
+	// copy strings (not null-terminated, fixed-length)
+	memcpy(packet->CONF, wb_same_resp+4, 2);
+	memcpy(packet->DATA, wb_same_resp+6, 8);
+}
+
+void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
+{
+	struct Si4707_SAME_Status_Packet first_packet;
+
+	get_si4707_same_packet(params, &first_packet);
+
+	// byte 0
+	full_response->CTS = 		first_packet.CTS;
+	full_response->ERR =		first_packet.ERR;
+	full_response->RSQINT =		first_packet.RSQINT;
+	full_response->SAMEINT = 	first_packet.SAMEINT;
+	full_response->ASQINT =		first_packet.ASQINT;
+	full_response->STCINT =		first_packet.STCINT;
+
+	// byte 1
+	full_response->EOMDET = 	first_packet.EOMDET;
+	full_response->SOMDET = 	first_packet.SOMDET;
+	full_response->PREDET = 	first_packet.PREDET;
+	full_response->HDRRDY = 	first_packet.HDRRDY;
+
+	full_response->STATE  = 	first_packet.STATE;
+	full_response->MSGLEN = 	first_packet.MSGLEN;
+
+	// TODO:  iterate over responses and read them into a buffer
+	// for now, just copying 1 packet response for testing.
+	// TODO:  these need to respect MSGLEN.  kmo 16 oct 2023
+	// full_response->CONF = first_packet.CONF;
+	// full_response->DATA = first_packet.DATA;
+
+	// OLD CODE:
+	// if (true) { // (message_length > 0) {
+	// 	// TODO:  this is where we have to send multiple messages with differing params
+	// 	// (need to set offset into buffer for read)
+	// 	// kmo 10 oct 2023 22h30
+	// 	uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
+		
+	// 	// for now, read at most 8 bytes of buffer so we don't have to deal with
+	// 	// making multiple requests.
+	// 	int bytesToRead = MIN(message_length, 8);
+	// 	printf("reading %d bytes of SAME buffer\n", bytesToRead);
+		
+	// 	for (int i = 0; i < bytesToRead; i++) {
+	// 		same_buf[i] = wb_same_status_resp[i + 6];
+	// 	}
+		
+	// 	printf("SAME buffer: '%s'\n\n", same_buf);
+	// }
 }
 
 void print_si4707_same_status() {
-	uint8_t wb_same_status_resp[16] = { 0x00 };
-	send_command(SI4707_CMD_WB_SAME_STATUS);
-	read_resp(wb_same_status_resp);
-	
-	uint8_t end_of_message_detected     = wb_same_status_resp[1] & 0x08;
-	uint8_t start_of_message_detected   = wb_same_status_resp[1] & 0x04;
-	uint8_t preamble_detected           = wb_same_status_resp[1] & 0x02;
-	uint8_t header_ready                = wb_same_status_resp[1] & 0x01;
-	uint8_t state                       = wb_same_status_resp[2];
-	uint8_t message_length              = wb_same_status_resp[3];
-	
+	struct Si4707_SAME_Status_Params params;
+	params.INTACK = 0;			// leave it alone for now
+	params.READADDR = 0;		// we'll move this cursor forward as we get packets
+	struct Si4707_SAME_Status_FullResponse response;
+
+	get_si4707_same_status(&params, &response);
 	puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
 	printf("%6d %6d %6d %6d %5d %6d\n", 
-				end_of_message_detected, start_of_message_detected, preamble_detected, 
-				header_ready, state, message_length);
-				
-	if (true) { // (message_length > 0) {
-		// TODO:  this is where we have to send multiple messages with differing params
-		// (need to set offset into buffer for read)
-		// kmo 10 oct 2023 22h30
-		uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
-		
-		// for now, read at most 8 bytes of buffer so we don't have to deal with
-		// making multiple requests.
-		int bytesToRead = MIN(message_length, 8);
-		printf("reading %d bytes of SAME buffer\n", bytesToRead);
-		
-		for (int i = 0; i < bytesToRead; i++) {
-			same_buf[i] = wb_same_status_resp[i + 6];
-		}
-		
-		printf("SAME buffer: '%s'\n\n", same_buf);
-	}
+				response.EOMDET, response.SOMDET, response.PREDET, 
+				response.HDRRDY, response.STATE, response.MSGLEN);
+	
+	// TODO:  check the data and see if there's a printable message there?
+	// should all be null-initialized, but maybe not?
+	
 }

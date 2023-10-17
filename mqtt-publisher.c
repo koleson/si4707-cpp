@@ -16,6 +16,8 @@
 #include "timer.h"
 #include "si4707.h"
 
+#include "mqtt-publisher.h"
+
 /* Clock */
 #define PLL_SYS_KHZ (133 * 1000)
 
@@ -37,7 +39,7 @@
 #define MQTT_CLIENT_ID "rpi-pico-si4707"
 #define MQTT_USERNAME "wiznet"
 #define MQTT_PASSWORD "wizn3t"
-#define MQTT_PUBLISH_TOPIC "wiznet"
+#define MQTT_PUBLISH_TOPIC "si4707"
 #define MQTT_PUBLISH_PAYLOAD "Hello, World!"
 #define MQTT_PUBLISH_PERIOD (1000 * 10) // 10 seconds
 #define MQTT_KEEP_ALIVE 60              // 60 milliseconds
@@ -48,7 +50,7 @@
 /* Network */
 static wiz_NetInfo g_net_info =
 	{
-		.mac = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56}, // MAC address
+		.mac = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x99}, // MAC address
 		.ip = {0, 0, 0, 0},                     // IP address
 		.sn = {255, 255, 255, 0},                    // Subnet Mask
 		.gw = {0, 0, 0, 0},                     // Gateway
@@ -73,6 +75,9 @@ static MQTTMessage g_mqtt_message;
 static uint8_t g_ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {
 	0,
 }; // common buffer
+
+char* root_topic = "si4707";
+char* heartbeat_topic_suffix = "heartbeat";
 
 /* DHCP */
 static uint8_t g_dhcp_get_ip_flag = 0;
@@ -103,12 +108,15 @@ static void wizchip_dhcp_init(void);
 static void wizchip_dhcp_assign(void);
 static void wizchip_dhcp_conflict(void);
 
+uint8_t dhcp_retry = 0;
+uint8_t dns_retry = 0;
+
 int publish_helloworld();
 
-int loop() {
+int dhcp_wait() {
 	uint8_t retval = 0;
-	uint8_t dhcp_retry = 0;
-	uint8_t dns_retry = 0;
+	
+	
 	/* Infinite loop */
 	while (1)
 	{
@@ -137,6 +145,10 @@ int loop() {
 					printf(" DHCP timeout occurred and retry %d\n", dhcp_retry);
 				}
 			}
+			else if (retval == DHCP_RUNNING)
+			{
+				puts("DHCP client running, waiting...");
+			}
 	
 			if (dhcp_retry > DHCP_RETRY_COUNT)
 			{
@@ -147,7 +159,7 @@ int loop() {
 				// TODO:  extract constant
 				return 99;
 			}
-	
+
 			wizchip_delay_ms(1000); // wait for 1 second
 		}
 	}
@@ -167,10 +179,15 @@ int init_mqtt() {
 	puts("initializing wiznet SPI");
 	
 	wizchip_spi_initialize();
+
+	puts("initializing wiznet CRIS");
 	wizchip_cris_initialize();
 	
+	puts("resetting wiznet chip");
 	wizchip_reset();
+	puts("initializing wiznet chip");
 	wizchip_initialize();
+	puts("checking wiznet chip");
 	wizchip_check();
 	
 	wizchip_1ms_timer_initialize(repeating_timer_callback);
@@ -181,7 +198,7 @@ int init_mqtt() {
 	{
 		puts("DHCP init....");
 		wizchip_dhcp_init();
-		puts("DHCP done...?");
+		puts("DHCP init done.");
 	}
 	else // static
 	{
@@ -191,7 +208,9 @@ int init_mqtt() {
 		print_network_information(g_net_info);
 	}
 	
-	loop();
+	puts("init_mqtt calling dhcp_wait");
+	dhcp_wait();
+	puts("init_mqtt dhcp_wait finished");
 	
 	NewNetwork(&g_mqtt_network, SOCKET_MQTT);
 	
@@ -245,56 +264,93 @@ int init_mqtt() {
 int publish_helloworld()
 {
 	puts("publish_helloworld()");
-	int mqtt_retval = 0;
-	
-	/* Configure publish message */
-	g_mqtt_message.qos = QOS0;
-	g_mqtt_message.retained = 0;
-	g_mqtt_message.dup = 0;
-	g_mqtt_message.payload = MQTT_PUBLISH_PAYLOAD;
-	g_mqtt_message.payloadlen = strlen(g_mqtt_message.payload);
-
-	
-	/* Publish */
-	mqtt_retval = MQTTPublish(&g_mqtt_client, MQTT_PUBLISH_TOPIC, &g_mqtt_message);
-	
-	if (mqtt_retval < 0)
-	{
-		printf(" Publish failed : %d\n", mqtt_retval);
-		return mqtt_retval;
-	}
-	
-	printf(" Published (%d)\n", mqtt_retval);
-	
-	if ((mqtt_retval = MQTTYield(&g_mqtt_client, g_mqtt_packet_connect_data.keepAliveInterval)) < 0)
-	{
-		printf(" Yield error : %d\n", mqtt_retval);
-	
-		return mqtt_retval;
-	}
+	int mqtt_retval = publish(MQTT_PUBLISH_TOPIC, MQTT_PUBLISH_PAYLOAD);
 	
 	return mqtt_retval;
 }
 
-int publish_heartbeat(struct Si4707_Heartbeat *heartbeat) {
-	int mqtt_retval = 0;
+
+
+void update_root_topic(char* new_topic_root) 
+{
+	root_topic = new_topic_root;
+}
+
+int publish_SAME_status(struct Si4707_SAME_Status_FullResponse *status)
+{
+	char payload[512] = { 0x00 };
+	char* format = "{ "
+					"\"CTS\": %d, "
+					"\"ERR\": %d, "
+					"\"RSQINT\": %d, "
+					"\"SAMEINT\": %d, "
+					"\"ASQINT\": %d, "
+					"\"STCINT\": %d, "
+					"\"EOMDET\": %d, "
+					"\"SOMDET\": %d, "
+					"\"PREDET\": %d, "
+					"\"HDRRDY\": %d, "
+					"\"STATE\": %d, "
+					"\"MSGLEN\": %d"
+					" }";
 	
+	sprintf(payload, format,
+					status->CTS,
+					status->ERR,
+					status->RSQINT,
+					status->SAMEINT,
+					status->ASQINT,
+					status->STCINT,
+					status->EOMDET,
+					status->SOMDET,
+					status->PREDET,
+					status->HDRRDY,
+					status->STATE,
+					status->MSGLEN
+					);
+
+	char topic[32];
+	sprintf(topic, "%s/same_status", root_topic);
+
+	int mqtt_retval = publish(topic, payload);
+
+	return mqtt_retval;
+}
+
+int publish_heartbeat(struct Si4707_Heartbeat *heartbeat) 
+{
 	char payload[256] = { 0x00 };
-	sprintf(payload, "{ \"iteration\": %d, \"si4707_booted\": %s, \"rssi\": %d, \"snr\": %d }", 
-	 					heartbeat->iteration, (heartbeat->si4707_started ? "true" : "false"), heartbeat->rssi, heartbeat->snr);
+	char* format =  "{ \"iteration\": %d, "
+					"\"si4707_booted\": %s, "
+					"\"rssi\": %d, "
+					"\"snr\": %d }";
+
+	sprintf(payload, format, 
+	 					heartbeat->iteration, 
+						(heartbeat->si4707_started ? "true" : "false"),
+						heartbeat->rssi, 
+						heartbeat->snr);
 	
+	char topic[32];
+	sprintf(topic, "%s/%s", root_topic, heartbeat_topic_suffix);
+	
+	int mqtt_retval = publish(topic, payload);
+	
+	return mqtt_retval;
+}
+
+int publish(char* topic, char* payload) {
+	int mqtt_retval = 0;
+
 	/* Configure publish message */
 	g_mqtt_message.qos = QOS0;
 	g_mqtt_message.retained = 0;
 	g_mqtt_message.dup = 0;
 	g_mqtt_message.payload = payload;
 	g_mqtt_message.payloadlen = strlen(g_mqtt_message.payload);
-	
-	char topic[32];
-	sprintf(topic, "%s/heartbeat", MQTT_PUBLISH_TOPIC);
-	/* Publish */
+
 	mqtt_retval = MQTTPublish(&g_mqtt_client, topic, &g_mqtt_message);
-	
+
 	if (mqtt_retval < 0)
 	{
 		printf(" Publish failed : %d\n", mqtt_retval);

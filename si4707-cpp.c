@@ -16,6 +16,7 @@
 #include "mqtt-publisher.h"
 
 bool g_Si4707_booted_successfully = false;
+char g_board_id_string[32];
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     // not really doing anything right now.  just a demo.
@@ -67,6 +68,9 @@ int main()
             printf("%d: %02X /", len, board_id.id[len]);
     }
     
+    snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
+    update_root_topic(g_board_id_string);
+
     printf("\n\n\n");
     // fflush(stdout);
     printf("initializing MQTT...\n");
@@ -167,11 +171,21 @@ int main()
                 } else {
                     puts("RSQ/SAME status CTS timed out :(");
                 }
+
+                bool same_cts = await_si4707_cts(100);
+                if (same_cts) {
+                    struct Si4707_SAME_Status_FullResponse same_status;
+                    struct Si4707_SAME_Status_Params same_params;
+                    same_params.INTACK = 0; // leave it alone
+                    same_params.READADDR = 0;   // TODO?
+                    get_si4707_same_status(&same_params, &same_status);
+                    publish_SAME_status(&same_status);
+                } else {
+                    puts("SAME status CTS timed out :(");
+                }
             }
             
             
-            
-            // publish_helloworld();
             publish_heartbeat(&heartbeat);
             
             gpio_put(PICO_DEFAULT_LED_PIN, 0);
