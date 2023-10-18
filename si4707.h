@@ -53,6 +53,8 @@ struct Si4707_SAME_Status_Packet {
 
 	// confidence for the 8 bytes in response, 0-3, 3 being most confident
 	uint8_t CONF[2];
+
+	// 8 bytes of the SAME header starting at `READADDR` specified in params
 	uint8_t DATA[8];
 };
 

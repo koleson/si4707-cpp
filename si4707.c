@@ -342,6 +342,50 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 		
 	// 	printf("SAME buffer: '%s'\n\n", same_buf);
 	// }
+
+	// maximum message length is ~250 chars.
+	float whole_responses_needed = first_packet.MSGLEN / 8;
+	int remainder = first_packet.MSGLEN % 8;
+	int responses_needed;
+	
+	// kmo 18 oct 2023 10h51:  seems like this is still undercounting
+	// TODO:  log responses_needed + msglen to post-hoc validate
+	if (remainder > 0) {
+		responses_needed = whole_responses_needed + 1;
+	} else {
+		responses_needed = whole_responses_needed;
+	}
+
+	printf("%d responses needed to get message of length %d\n", responses_needed, first_packet.MSGLEN);
+
+	uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
+
+	struct Si4707_SAME_Status_Params same_buf_params;
+	struct Si4707_SAME_Status_Packet same_buf_packet;
+	same_buf_params.INTACK = 0;
+	same_buf_params.READADDR = 0;
+
+	for (int i = 0; i < whole_responses_needed; i++) {
+		int offset = i * 8;
+		int chars_remaining = first_packet.MSGLEN - (i * 8);
+		same_buf_params.READADDR = offset;
+		
+		int chars_to_read;
+		if (chars_remaining < 8) {
+			chars_to_read = 8;
+		} else {
+			chars_to_read = chars_remaining;
+		}
+
+		same_buf_params.READADDR = offset;
+		get_si4707_same_packet(&same_buf_params, &same_buf_packet);
+
+		printf("msg i before memcpy - same_buf = '%s\n'", same_buf);
+		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
+		printf("msg i after memcpy - same_buf = '%s'\n", same_buf);
+	}
+
+	full_response->DATA = same_buf;
 }
 
 void print_si4707_same_status() {
