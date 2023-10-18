@@ -117,8 +117,9 @@ int main()
     while(true) {
         // TODO: check status registers for interesting things here and force a
         // mqtt message or heartbeat if anything interesting happens
-        if (outer_loops_since_last_heartbeat % 100 == 0) {
-            printf("outerloop %d\n", outer_loops_since_last_heartbeat);
+        if (outer_loops_since_last_heartbeat % 50 == 0) {
+            printf(".");
+            //printf("outerloop %d\n", outer_loops_since_last_heartbeat);
         }
         
         
@@ -127,7 +128,7 @@ int main()
         if (microseconds_since_last_heartbeat > heartbeat_interval) {
             last_heartbeat = now;
             outer_loops_since_last_heartbeat = 0;
-            puts("heartbeating");
+            puts("\n\nheartbeating");
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             
             struct Si4707_Heartbeat heartbeat;
@@ -179,6 +180,9 @@ int main()
                     same_params.INTACK = 0; // leave it alone
                     same_params.READADDR = 0;   // TODO?
                     get_si4707_same_status(&same_params, &same_status);
+                    printf("current SAME msglen: %d\n", same_status.MSGLEN);
+                    printf("current SAME header: '%s'\n", same_status.DATA);
+
                     publish_SAME_status(&same_status);
                 } else {
                     puts("SAME status CTS timed out :(");
