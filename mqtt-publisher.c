@@ -291,7 +291,8 @@ int publish_SAME_status(struct Si4707_SAME_Status_FullResponse *status)
 					"\"PREDET\": %d, "
 					"\"HDRRDY\": %d, "
 					"\"STATE\": %d, "
-					"\"MSGLEN\": %d"
+					"\"MSGLEN\": %d, "
+					"\"DATA\": \"%s\""
 					" }";
 	
 	sprintf(payload, format,
@@ -306,7 +307,8 @@ int publish_SAME_status(struct Si4707_SAME_Status_FullResponse *status)
 					status->PREDET,
 					status->HDRRDY,
 					status->STATE,
-					status->MSGLEN
+					status->MSGLEN,
+					status->DATA
 					);
 
 	char topic[32];
@@ -357,7 +359,7 @@ int publish(char* topic, char* payload) {
 		return mqtt_retval;
 	}
 	
-	printf("Heartbeat Published (%d)\n", mqtt_retval);
+	printf("%s Published (%d)\n", topic, mqtt_retval);
 	
 	if ((mqtt_retval = MQTTYield(&g_mqtt_client, g_mqtt_packet_connect_data.keepAliveInterval)) < 0)
 	{
