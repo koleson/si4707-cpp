@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "si4707_const.h"
 #include "hardware.h"
@@ -59,7 +60,7 @@ void reset_si4707() {
 	gpio_set_dir(SI4707_GPO1, GPIO_OUT);
 	gpio_put(SI4707_GPO1, 1);
 	
-	// GPO1 = MISO - we can use it before SPI is setup
+	// GPO1 = MISO - we can use it before SPI is set up
 	gpio_init(SI4707_GPO2);
 	gpio_set_dir(SI4707_GPO2, GPIO_OUT);
 	gpio_put(SI4707_GPO2, 1);
@@ -92,7 +93,7 @@ bool await_si4707_cts(int maxWait) {
 		
 		// only print status if it's taking a long time
 		if (i > 0 && i % 200 == 0) {
-			printf("cts waitloop status = %d (i = %d)\n", status, i);
+			printf("cts wait-loop status = %d (i = %d)\n", status, i);
 		}
 		
 		sleep_ms(5);
@@ -103,11 +104,11 @@ bool await_si4707_cts(int maxWait) {
 		return true;
 	} else {
 		// timed out :(
-		printf("cts waitloop timed out (%d patience)\n", maxWait);
+		printf("cts wait-loop timed out (%d patience)\n", maxWait);
 		return false;
 	}
 	
-	//printf("cts waitloop exit status: %d\n\n", status);
+	//printf("cts wait-loop exit status: %d\n\n", status);
 }
 
 void power_up_si4707() {
@@ -161,35 +162,45 @@ void tune_si4707() {
 	
 	
 	// tune status takes a moment to populate, so we don't check it here.
-	// kmo 10 oct 20234 21h54
+	// kmo 10 oct 2023 21h54
 }
 
-void send_command(uint8_t cmd) {
-	uint8_t cmd_buf[9] = { 0x00 };
-	cmd_buf[0] = SI4707_SPI_SEND_CMD;         // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
-	cmd_buf[1] = cmd;
-	
-	si4707_cs_select();
-	spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
-	si4707_cs_deselect();
-	
-	bool cts = await_si4707_cts(CTS_WAIT);
-	if (cts) {
-		uint8_t resp_buf[16] = { 0x00 };
-		read_resp(resp_buf);
-	} else {
-		printf("could not send command %02x - CTS timeout\n", cmd);
-	}
-	
+void send_command(uint8_t cmd, struct Si4707_Command_Args* args) {
+    uint8_t cmd_buf[9] = { 0x00 };
+    cmd_buf[0] = SI4707_SPI_SEND_CMD;         // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
+    cmd_buf[1] = cmd;
+
+    cmd_buf[2] = args->ARG1; cmd_buf[3] = args->ARG2; cmd_buf[4] = args->ARG3; cmd_buf[5] = args->ARG4;
+    cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
+
+    si4707_cs_select();
+    spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
+    si4707_cs_deselect();
+
+    bool cts = await_si4707_cts(CTS_WAIT);
+    if (cts) {
+        uint8_t resp_buf[16] = { 0x00 };
+        read_resp(resp_buf);
+    } else {
+        printf("could not send command %02x - CTS timeout\n", cmd);
+    }
+}
+
+// TODO:  need a variant that accepts params.
+// need to look at AN332 to see how params are structured across commands.
+void send_command_noargs(uint8_t cmd) {
+	struct Si4707_Command_Args args;
+    args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
+    args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
+
+    send_command(cmd, &args);
 }
 
 uint8_t read_status() {
-	char status_cmd[1];
-	status_cmd[0] = 0xA0;        // read status byte via GPO1
+	const uint8_t status_cmd[1] = { 0xA0 }; // read status byte via GPO1
 	
-	// buffer:  receive powerup status to this buffer
-	char status_result[1];
-	status_result[0] = 0x00;
+	// buffer:  receive power up status to this buffer
+	uint8_t status_result[1] = { 0x00 };
 	
 	si4707_cs_select();
 	spi_write_blocking(SI4707_SPI_PORT, status_cmd, 1);
@@ -215,12 +226,12 @@ void read_resp(uint8_t* resp) {
 	}
 }
 
-void get_si4707_rev() {   
-	char product_data[16] = { 0 };
+void get_si4707_rev() {
+	uint8_t product_data[16] = { 0x00 };
 	
 	bool cts_cmd = await_si4707_cts(CTS_WAIT);
 	if (cts_cmd) {
-		send_command(SI4707_CMD_GET_REV);
+		send_command_noargs(SI4707_CMD_GET_REV);
 	} else {
 		puts("could not request product info - CTS timeout");
 		return;
@@ -235,9 +246,14 @@ void get_si4707_rev() {
 		
 		if (pn != 7) {
 			printf("product number invalid - halting\n\n");
+
+            // halt
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
 			while (true) {
 				busy_wait_ms(100000);
 			}
+#pragma clang diagnostic pop
 		}
 	} else {
 		puts("could not read product info - CTS timeout");
@@ -247,7 +263,7 @@ void get_si4707_rev() {
 
 void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
-	send_command(SI4707_CMD_WB_RSQ_STATUS);
+	send_command_noargs(SI4707_CMD_WB_RSQ_STATUS);
 	read_resp(wb_rsq_resp);
 	uint8_t valid = wb_rsq_resp[2] & 0x01;
 	uint8_t rssi = wb_rsq_resp[4];
@@ -268,8 +284,15 @@ void print_si4707_rsq()
 void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params, 
 							struct Si4707_SAME_Status_Packet *packet) {
 	uint8_t wb_same_resp[16] = { 0x00 };
-	// TODO:  pass in params!
-	send_command(SI4707_CMD_WB_SAME_STATUS);
+
+    struct Si4707_Command_Args args;
+    // ARG1:  D1 = CLRBUF; D0 = INTACK
+    args.ARG1 = 0x00 | (params->INTACK ? 0x01 : 0x00) | (params->CLRBUF ? 0x02 : 0x00);
+    // ARG2:  READADDR
+    args.ARG2 = params->READADDR;
+    args.ARG3 = 0x00; args.ARG4 = 0x00; args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
+
+    send_command(SI4707_CMD_WB_SAME_STATUS, &args);
 	read_resp(wb_same_resp);
 	
 	// byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
@@ -331,7 +354,7 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 	// 	// kmo 10 oct 2023 22h30
 	// 	uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
 		
-	// 	// for now, read at most 8 bytes of buffer so we don't have to deal with
+	// 	// for now, read at most 8 bytes of buffer, so we don't have to deal with
 	// 	// making multiple requests.
 	// 	int bytesToRead = MIN(message_length, 8);
 	// 	printf("reading %d bytes of SAME buffer\n", bytesToRead);
@@ -344,11 +367,11 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 	// }
 
 	// maximum message length is ~250 chars.
-	float whole_responses_needed = first_packet.MSGLEN / 8;
+	int whole_responses_needed = first_packet.MSGLEN / 8;
 	int remainder = first_packet.MSGLEN % 8;
 	int responses_needed;
 	
-	// kmo 18 oct 2023 10h51:  seems like this is still undercounting
+	// kmo 18 oct 2023 10h51:  seems like this is still under-counting
 	// TODO:  log responses_needed + msglen to post-hoc validate
 	if (remainder > 0) {
 		responses_needed = whole_responses_needed + 1;
@@ -358,7 +381,15 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 
 	printf("%d responses needed to get message of length %d\n", responses_needed, first_packet.MSGLEN);
 
-	uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
+	// TODO:  malloc size based on MSGLEN.  kmo 18 oct 2023 15h54
+	// MSGLEN can be at most 255, so adding null termination, 256 max length
+	int alloc_length = 256;
+	uint8_t* same_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
+	
+	// auto-null-termination
+	for (int i = 0; i < alloc_length; i++) {
+		same_buf[i] = 0x00;
+	}
 
 	struct Si4707_SAME_Status_Params same_buf_params;
 	struct Si4707_SAME_Status_Packet same_buf_packet;
@@ -385,22 +416,34 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 		printf("msg i after memcpy - same_buf = '%s'\n", same_buf);
 	}
 
+	// heap-allocated variables exit here
 	full_response->DATA = same_buf;
 }
 
-void print_si4707_same_status() {
-	struct Si4707_SAME_Status_Params params;
-	params.INTACK = 0;			// leave it alone for now
-	params.READADDR = 0;		// we'll move this cursor forward as we get packets
-	struct Si4707_SAME_Status_FullResponse response;
+void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response) {
+	// struct Si4707_SAME_Status_Params params;
+	// params.INTACK = 0;			// leave it alone for now
+	// params.READADDR = 0;		// we'll move this cursor forward as we get packets
+	// struct Si4707_SAME_Status_FullResponse response;
 
-	get_si4707_same_status(&params, &response);
+	// get_si4707_same_status(&params, &response);
 	puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
 	printf("%6d %6d %6d %6d %5d %6d\n", 
-				response.EOMDET, response.SOMDET, response.PREDET, 
-				response.HDRRDY, response.STATE, response.MSGLEN);
+				response->EOMDET, response->SOMDET, response->PREDET, 
+				response->HDRRDY, response->STATE, response->MSGLEN);
 	
 	// TODO:  check the data and see if there's a printable message there?
 	// should all be null-initialized, but maybe not?
-	
+	printf("Current SAME MSGLEN: %d\n", response->MSGLEN);
+	printf("Current SAME DATA: '%s'\n", response->DATA);
+}
+
+void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
+	if (response->DATA) {
+		free(response->DATA);
+	}
+
+	if (response->CONF) {
+		free(response->CONF);
+	}
 }

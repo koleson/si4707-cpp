@@ -30,7 +30,8 @@ struct Si4707_RSQ_Status {
 struct Si4707_SAME_Status_Params {
 	// byte 0:  command
 
-	// byte 1:  Acknowledge SAMEINT (LSB)
+	// byte 1:  Clear Buffer (D1), Acknowledge SAMEINT (LSB/D0)
+    bool CLRBUF;
 	bool INTACK;
 
 	// byte 2:  offset to start reading SAME message
@@ -76,6 +77,18 @@ struct Si4707_SAME_Status_FullResponse {
 	uint8_t* DATA;
 };
 
+struct Si4707_Command_Args {
+    uint8_t ARG1;
+    uint8_t ARG2;
+    uint8_t ARG3;
+    uint8_t ARG4;
+    uint8_t ARG5;
+    uint8_t ARG6;
+    uint8_t ARG7;
+};
+
+void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response);
+
 // to remove
 void setup_si4707_spi();
 
@@ -89,7 +102,7 @@ void power_up_si4707();
 void get_si4707_rev();
 void tune_si4707();
 void print_si4707_rsq();
-void print_si4707_same_status();
+void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response);
 
 void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status);
 

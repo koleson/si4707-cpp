@@ -41,7 +41,6 @@
 #define MQTT_PASSWORD "wizn3t"
 #define MQTT_PUBLISH_TOPIC "si4707"
 #define MQTT_PUBLISH_PAYLOAD "Hello, World!"
-#define MQTT_PUBLISH_PERIOD (1000 * 10) // 10 seconds
 #define MQTT_KEEP_ALIVE 60              // 60 milliseconds
 
 /* Socket */
@@ -101,7 +100,7 @@ static void set_clock_khz(void);
 
 /* Timer  */
 static void repeating_timer_callback(void);
-static time_t millis(void);
+//static time_t millis(void);
 
 /* DHCP */
 static void wizchip_dhcp_init(void);
@@ -111,10 +110,12 @@ static void wizchip_dhcp_conflict(void);
 uint8_t dhcp_retry = 0;
 uint8_t dns_retry = 0;
 
-int publish_helloworld();
+int dhcp_run_wrapper() {
+	return DHCP_run();
+}
 
 int dhcp_wait() {
-	uint8_t retval = 0;
+	uint8_t retval;
 	
 	
 	/* Infinite loop */
@@ -159,6 +160,7 @@ int dhcp_wait() {
 				// TODO:  extract constant
 				return 99;
 			}
+			printf("dchp_wait: retval = %d", retval);
 
 			wizchip_delay_ms(1000); // wait for 1 second
 		}
@@ -168,9 +170,7 @@ int dhcp_wait() {
 int init_mqtt() {
 	puts("mqtt-publisher: init_mqtt()");
 	/* Initialize */
-	int32_t retval = 0;
-	uint32_t start_ms = 0;
-	uint32_t end_ms = 0;
+	int32_t retval;
 	
 	set_clock_khz();
 	
@@ -254,16 +254,16 @@ int init_mqtt() {
 	}
 	
 	printf(" MQTT connected (mqtt_connect_retval: %d)\n", mqtt_connect_retval);
-	
-	publish_helloworld();
+
+    publish_hello_world();
 	
 	puts("mqtt-publisher:  init_mqtt() complete!");
 	return 0;
 }
 
-int publish_helloworld()
+int publish_hello_world()
 {
-	puts("publish_helloworld()");
+	puts("publish_hello_world()");
 	int mqtt_retval = publish(MQTT_PUBLISH_TOPIC, MQTT_PUBLISH_PAYLOAD);
 	
 	return mqtt_retval;
@@ -395,10 +395,10 @@ static void repeating_timer_callback(void)
 	MilliTimer_Handler();
 }
 
-static time_t millis(void)
-{
-	return g_msec_cnt;
-}
+//static time_t millis(void)
+//{
+//	return g_msec_cnt;
+//}
 
 /* DHCP */
 static void wizchip_dhcp_init(void)
