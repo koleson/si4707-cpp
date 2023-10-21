@@ -136,7 +136,7 @@ int main()
         if (microseconds_since_last_heartbeat > heartbeat_interval) {
             last_heartbeat = now;
             outer_loops_since_last_heartbeat = 0;
-            puts("\n\nheartbeating");
+            puts("\n\n=========================");
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             
             struct Si4707_Heartbeat heartbeat;
@@ -149,9 +149,6 @@ int main()
             if (g_Si4707_booted_successfully) {
                 bool rev_cts = await_si4707_cts(100);
                 if (rev_cts) {
-                    // FIXME:  getting si4707 rev info before checking status
-                    // seems to result in the tune being valid more reliably?
-                    // kmo 10 oct 2023 21h59
                     get_si4707_rev();
                 }
                 
@@ -160,7 +157,6 @@ int main()
                     uint8_t status = read_status();
                     
                     if (status & 0x01) {
-                        puts("tune valid");
                         heartbeat.tune_valid = true;
                     } else {
                         puts("tune invalid :(");
@@ -185,8 +181,8 @@ int main()
                 if (same_cts) {
                     struct Si4707_SAME_Status_FullResponse same_status;
                     struct Si4707_SAME_Status_Params same_params;
-                    same_params.INTACK = 0; // leave it alone
-                    same_params.READADDR = 0;   // TODO?
+                    same_params.INTACK = 0;     // leave it alone
+                    same_params.READADDR = 0;
                     get_si4707_same_status(&same_params, &same_status);
                     
                     print_si4707_same_status(&same_status);
@@ -217,10 +213,7 @@ int main()
             main_loops++;
         }
 
-        
-        
-        // TODO:  remove this once outer loop is 
-        // "safe"
+
         busy_wait_ms(10);
         outer_loops_since_last_heartbeat++;
        

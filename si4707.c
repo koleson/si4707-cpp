@@ -186,8 +186,6 @@ void send_command(uint8_t cmd, struct Si4707_Command_Args* args) {
     }
 }
 
-// TODO:  need a variant that accepts params.
-// need to look at AN332 to see how params are structured across commands.
 void send_command_noargs(uint8_t cmd) {
 	struct Si4707_Command_Args args;
     args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
@@ -341,38 +339,13 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 	full_response->STATE  = 	first_packet.STATE;
 	full_response->MSGLEN = 	first_packet.MSGLEN;
 
-	// TODO:  iterate over responses and read them into a buffer
-	// for now, just copying 1 packet response for testing.
-	// TODO:  these need to respect MSGLEN.  kmo 16 oct 2023
-	// full_response->CONF = first_packet.CONF;
-	// full_response->DATA = first_packet.DATA;
-
-	// OLD CODE:
-	// if (true) { // (message_length > 0) {
-	// 	// TODO:  this is where we have to send multiple messages with differing params
-	// 	// (need to set offset into buffer for read)
-	// 	// kmo 10 oct 2023 22h30
-	// 	uint8_t same_buf[255] = { 0x00 }; // null-terminated for your safety
-		
-	// 	// for now, read at most 8 bytes of buffer, so we don't have to deal with
-	// 	// making multiple requests.
-	// 	int bytesToRead = MIN(message_length, 8);
-	// 	printf("reading %d bytes of SAME buffer\n", bytesToRead);
-		
-	// 	for (int i = 0; i < bytesToRead; i++) {
-	// 		same_buf[i] = wb_same_status_resp[i + 6];
-	// 	}
-		
-	// 	printf("SAME buffer: '%s'\n\n", same_buf);
-	// }
-
 	// maximum message length is ~250 chars.
 	int whole_responses_needed = first_packet.MSGLEN / 8;
 	int remainder = first_packet.MSGLEN % 8;
 	int responses_needed;
 	
 	// kmo 18 oct 2023 10h51:  seems like this is still under-counting
-	// TODO:  log responses_needed + msglen to post-hoc validate
+    // kmo 20 oct 2023 18h03:  i think i fixed the undercounting.
 	if (remainder > 0) {
 		responses_needed = whole_responses_needed + 1;
 	} else {
@@ -421,19 +394,11 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 }
 
 void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response) {
-	// struct Si4707_SAME_Status_Params params;
-	// params.INTACK = 0;			// leave it alone for now
-	// params.READADDR = 0;		// we'll move this cursor forward as we get packets
-	// struct Si4707_SAME_Status_FullResponse response;
-
-	// get_si4707_same_status(&params, &response);
 	puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
 	printf("%6d %6d %6d %6d %5d %6d\n", 
 				response->EOMDET, response->SOMDET, response->PREDET, 
 				response->HDRRDY, response->STATE, response->MSGLEN);
-	
-	// TODO:  check the data and see if there's a printable message there?
-	// should all be null-initialized, but maybe not?
+
 	printf("Current SAME MSGLEN: %d\n", response->MSGLEN);
 	printf("Current SAME DATA: '%s'\n", response->DATA);
 }
