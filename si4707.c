@@ -240,7 +240,7 @@ void get_si4707_rev() {
 		read_resp(product_data);
 		
 		uint8_t pn = product_data[1];
-		printf("product number: %d\n", pn);
+		// printf("product number: %d\n", pn);
 		
 		if (pn != 7) {
 			printf("product number invalid - halting\n\n");
@@ -309,6 +309,7 @@ void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params,
 	packet->HDRRDY =	((wb_same_resp[1] & 0x01) != 0);
 
 	packet->STATE = 	wb_same_resp[2];
+    // printf("get_si4707_same_packet: wb_same_resp[3] = %d\n", wb_same_resp[3]);
 	packet->MSGLEN = 	wb_same_resp[3];
 	
 	// copy strings (not null-terminated, fixed-length)
@@ -338,6 +339,7 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 
 	full_response->STATE  = 	first_packet.STATE;
 	full_response->MSGLEN = 	first_packet.MSGLEN;
+    // printf("get_si4707_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
 
 	// maximum message length is ~250 chars.
 	int whole_responses_needed = first_packet.MSGLEN / 8;
