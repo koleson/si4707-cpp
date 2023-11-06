@@ -285,7 +285,7 @@ void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params,
 
     struct Si4707_Command_Args args;
     // ARG1:  D1 = CLRBUF; D0 = INTACK
-    args.ARG1 = 0x00 | (params->INTACK ? 0x01 : 0x00) | (params->CLRBUF ? 0x02 : 0x00);
+    args.ARG1 = 0x00 | (params->INTACK ? 0x01 : 0x00); // never clear buffer for now.  kmo 27 oct 2023 11h19  | (params->CLRBUF ? 0x02 : 0x00);
     // ARG2:  READADDR
     args.ARG2 = params->READADDR;
     args.ARG3 = 0x00; args.ARG4 = 0x00; args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
@@ -406,7 +406,10 @@ void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response) 
 }
 
 void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
-	if (response->DATA) {
+	// printf("freeing full response %p\n", response);
+
+    if (response->DATA != NULL) {
+        // printf("freeing response->DATA\n");
 		free(response->DATA);
 	}
 
