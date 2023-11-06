@@ -72,12 +72,12 @@ int main()
 
     printf("\n\n\n");
     // fflush(stdout);
-    printf("initializing MQTT...\n");
+    puts("initializing MQTT...");
     puts("sleeping before init_mqtt");
     sleep_ms(10);
     puts("done sleeping before init_mqtt");
     init_mqtt();
-    printf("... done initializing MQTT");
+    puts("... done initializing MQTT.");
 
     // resetting to SPI mode requires
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
@@ -119,7 +119,7 @@ int main()
 
     // superloop
 #pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
+#pragma ide diagnostic ignored "EndlessLoop"        // yes, we know, thanks.
     while (true) {
         // TODO: check status registers for interesting things here and force a
         // mqtt message or heartbeat if anything interesting happens
@@ -185,18 +185,19 @@ int main()
                     same_params.READADDR = 0;
                     get_si4707_same_status(&same_params, &same_status);
                     
+
+                    printf("printing SAME status\n");
                     print_si4707_same_status(&same_status);
+                    printf("publishing SAME status\n");
                     publish_SAME_status(&same_status);
+
 
                     free_Si4707_SAME_Status_FullResponse(&same_status);
                 } else {
                     puts("SAME status CTS timed out :(");
                 }
             }
-            
-            
-            
-            
+
             // DHCP maintenance
             if (microseconds_since_last_DHCP_run > dhcp_interval) {
                 last_DHCP_run = now;
