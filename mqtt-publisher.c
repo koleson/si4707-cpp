@@ -18,6 +18,8 @@
 
 #include "mqtt-publisher.h"
 
+#define VERSION "2023.11.04"
+
 /* Clock */
 #define PLL_SYS_KHZ (133 * 1000)
 
@@ -160,7 +162,7 @@ int dhcp_wait() {
 				// TODO:  extract constant
 				return 99;
 			}
-			printf("dchp_wait: retval = %d", retval);
+			printf("dchp_wait: retval = %d\n", retval);
 
 			wizchip_delay_ms(1000); // wait for 1 second
 		}
@@ -280,6 +282,7 @@ int publish_SAME_status(struct Si4707_SAME_Status_FullResponse *status)
 {
 	char payload[512] = { 0x00 };
 	char* format = "{ "
+                   "\"VERSION\": \"%s\", "
 					"\"CTS\": %d, "
 					"\"ERR\": %d, "
 					"\"RSQINT\": %d, "
@@ -296,6 +299,7 @@ int publish_SAME_status(struct Si4707_SAME_Status_FullResponse *status)
 					" }";
 	
 	sprintf(payload, format,
+                    VERSION,
 					status->CTS,
 					status->ERR,
 					status->RSQINT,
