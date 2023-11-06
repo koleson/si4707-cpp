@@ -360,6 +360,9 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 	// MSGLEN can be at most 255, so adding null termination, 256 max length
 	int alloc_length = 256;
 	uint8_t* same_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
+
+    // TODO: confidence might not actually need to be this big? kmo 4 nov 2023 11h23
+    uint8_t* conf_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
 	
 	// auto-null-termination
 	for (int i = 0; i < alloc_length; i++) {
@@ -393,6 +396,7 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 
 	// heap-allocated variables exit here
 	full_response->DATA = same_buf;
+    full_response->CONF = conf_buf;
 }
 
 void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response) {
