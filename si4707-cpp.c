@@ -17,22 +17,23 @@
 bool g_Si4707_booted_successfully = false;
 char g_board_id_string[32];
 
+int64_t g_current_heartbeat_interval = 5000000;    // 5000000 microseconds = 5 seconds
+
 //int64_t alarm_callback(alarm_id_t id, void *user_data) {
 //    // not really doing anything right now.  just a demo.
 //    puts("alarm_callback!");
 //    return 0;
 //}
 
-void prepare()
-{
-    stdio_init_all();
-    
-    puts("\n\n\n========================================================");
-    puts("si4707-cpp: prepare()");
-    
-    // prep LED GPIO
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+void prepare() {
+   stdio_init_all();
+
+   puts("\n\n\n========================================================");
+   puts("si4707-cpp: prepare()");
+
+   // prep LED GPIO
+   gpio_init(PICO_DEFAULT_LED_PIN);
+   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 }
 
 //void setup_i2c()
@@ -50,176 +51,185 @@ void prepare()
 //    gpio_pull_up(I2C_SCL);
 //}
 
-int main()
-{
-    prepare();
-    
-    // must `prepare` before trying to print this message.  kmo 9 oct 2023 17h29
-    puts("si4707-cpp: main()");
-    
-    pico_unique_board_id_t board_id;
-    pico_get_unique_board_id(&board_id);
+void maintain_dhcp() {
 
-    printf("====== board ID: %llx\n", board_id);
-    printf("===== bytes: %02x %02x [...] %02x %02x ==========\n\n", board_id.id[0], board_id.id[1], board_id.id[6], board_id.id[7]);
-    printf("proposed MAC ending: %02x:%02x\n", board_id.id[5], board_id.id[4]);
-    for (int len = 0; len < 8; len++) {
-            printf("%d: %02X /", len, board_id.id[len]);
-    }
-    
-    snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
-    update_root_topic(g_board_id_string);
+}
 
-    printf("\n\n\n");
-    // fflush(stdout);
-    puts("initializing MQTT...");
-    puts("sleeping before init_mqtt");
-    sleep_ms(10);
-    puts("done sleeping before init_mqtt");
-    init_mqtt();
-    puts("... done initializing MQTT.");
+uint64_t maintain_dhcp_lease(uint64_t dhcp_interval, uint64_t now, uint64_t microseconds_since_last_DHCP_run) {
+   uint64_t last_DHCP_run;
+   if (microseconds_since_last_DHCP_run > dhcp_interval) {
+      last_DHCP_run = now;
+      puts("updating DHCP");
+      dhcp_run_wrapper();
+      puts("done updating DHCP");
+   } else {
+      uint64_t microseconds_to_next_DHCP_run = dhcp_interval - microseconds_since_last_DHCP_run;
+      int seconds_to_next_DHCP_run = floor(
+              microseconds_to_next_DHCP_run / 1000000.0); // NOLINT(*-narrowing-conversions)
+      printf("next DHCP run in about %d seconds\n", seconds_to_next_DHCP_run);
+   }
+   return last_DHCP_run;
+}
 
-    // resetting to SPI mode requires
-    // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
-    // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
-    // reset_si4707 ends.  it seems easiest to drive it momentarily to make sure.
-    
-    reset_si4707();
-    
-    setup_si4707_spi();
-    
-    power_up_si4707();
-    
-    int cts = await_si4707_cts(500);
-    if (cts) {
-        puts("si4707 CTS - getting rev and tuning");
-        get_si4707_rev();
-        tune_si4707();
-        
-        g_Si4707_booted_successfully = true;
-    } else {
-        puts("failed to start si4707 :(");
-    }
-    
-    // setup_i2c();
-    
-    // test hardware timer
-    // add_alarm_in_ms(20000, alarm_callback, NULL, false);
-    
-    puts("oneshot done - LOOP TIME! ======");
-    
-    int main_loops = 0;
-    int outer_loops_since_last_heartbeat = 0;
-    uint64_t last_heartbeat = 0;
-    uint64_t last_DHCP_run = 0;
-    
-    static uint64_t heartbeat_interval = 5000000;  // 5000000 microseconds = 5 seconds
-    static uint64_t dhcp_interval = (uint64_t)60 * (uint64_t)60 * 1000000; // 60 minutes
-    // static uint64_t dhcp_interval = (uint64_t)20 * (uint64_t)1000000; // 60 seconds
+int main() {
+   prepare();
 
-    // superloop
+   // must `prepare` before trying to print this message.  kmo 9 oct 2023 17h29
+   puts("si4707-cpp: main()");
+
+   pico_unique_board_id_t board_id;
+   pico_get_unique_board_id(&board_id);
+
+   printf("====== board ID: %llx\n", board_id);
+   printf("===== bytes: %02x %02x [...] %02x %02x ==========\n\n", board_id.id[0], board_id.id[1], board_id.id[6],
+          board_id.id[7]);
+   printf("proposed MAC ending: %02x:%02x\n", board_id.id[5], board_id.id[4]);
+   for (int len = 0; len < 8; len++) {
+      printf("%d: %02X /", len, board_id.id[len]);
+   }
+
+   snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
+   update_root_topic(g_board_id_string);
+
+   printf("\n\n\n");
+   // fflush(stdout);
+   puts("initializing MQTT...");
+   puts("sleeping before init_mqtt");
+   sleep_ms(10);
+   puts("done sleeping before init_mqtt");
+   init_mqtt();
+   puts("... done initializing MQTT.");
+
+   // resetting to SPI mode requires
+   // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
+   // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
+   // reset_si4707 ends.  it seems easiest to drive it momentarily to make sure.
+
+   reset_si4707();
+
+   setup_si4707_spi();
+
+   power_up_si4707();
+
+   int cts = await_si4707_cts(500);
+   if (cts) {
+      puts("si4707 CTS - getting rev and tuning");
+      get_si4707_rev();
+      tune_si4707();
+
+      g_Si4707_booted_successfully = true;
+   } else {
+      puts("failed to start si4707 :(");
+   }
+
+   // setup_i2c();
+
+   // test hardware timer
+   // add_alarm_in_ms(20000, alarm_callback, NULL, false);
+
+   puts("oneshot done - LOOP TIME! ======");
+
+   int main_loops = 0;
+   int outer_loops_since_last_heartbeat = 0;
+   uint64_t last_heartbeat = 0;
+   uint64_t last_DHCP_run = 0;
+
+   static uint64_t heartbeat_interval = 5000000;  // 5000000 microseconds = 5 seconds
+   static uint64_t dhcp_interval = (uint64_t) 60 * (uint64_t) 60 * 1000000; // 60 minutes
+   // static uint64_t dhcp_interval = (uint64_t)20 * (uint64_t)1000000; // 60 seconds
+
+   // superloop
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"        // yes, we know, thanks.
-    while (true) {
-        // TODO: check status registers for interesting things here and force a
-        // mqtt message or heartbeat if anything interesting happens
-        if (outer_loops_since_last_heartbeat % 50 == 0) {
-            printf(".");
-            //printf("outerloop %d\n", outer_loops_since_last_heartbeat);
-        }
-        
-        
-        uint64_t now = time_us_64();
-        uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
-        uint64_t microseconds_since_last_DHCP_run = now - last_DHCP_run;
-
-        if (microseconds_since_last_heartbeat > heartbeat_interval) {
-            last_heartbeat = now;
-            outer_loops_since_last_heartbeat = 0;
-            puts("\n\n=========================");
-            gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            
-            struct Si4707_Heartbeat heartbeat;
-            heartbeat.iteration = main_loops;
-            heartbeat.si4707_started = g_Si4707_booted_successfully;
-            heartbeat.rssi = 0;
-            heartbeat.snr = 0;
-            
-            // bus_scan();
-            if (g_Si4707_booted_successfully) {
-                bool rev_cts = await_si4707_cts(100);
-                if (rev_cts) {
-                    get_si4707_rev();
-                }
-                
-                bool rsq_cts = await_si4707_cts(100);
-                if (rsq_cts) {
-                    uint8_t status = read_status();
-                    
-                    if (status & 0x01) {
-                        heartbeat.tune_valid = true;
-                    } else {
-                        puts("tune invalid :(");
-                        printf("(status %d)\n", status);
-                        heartbeat.tune_valid = false;
-                    }
-                    
-                    print_si4707_rsq();
-                    
-                    struct Si4707_RSQ_Status rsq_status;
-                    get_si4707_rsq(&rsq_status);
-                    
-                    heartbeat.snr = rsq_status.ASNR;
-                    heartbeat.rssi = rsq_status.RSSI;
-                    publish_heartbeat(&heartbeat);
-                    
-                } else {
-                    puts("RSQ/SAME status CTS timed out :(");
-                }
-
-                bool same_cts = await_si4707_cts(100);
-                if (same_cts) {
-                    struct Si4707_SAME_Status_FullResponse same_status;
-                    struct Si4707_SAME_Status_Params same_params;
-                    same_params.INTACK = 0;     // leave it alone
-                    same_params.READADDR = 0;
-                    get_si4707_same_status(&same_params, &same_status);
-                    
-
-                    printf("printing SAME status\n");
-                    print_si4707_same_status(&same_status);
-                    printf("publishing SAME status\n");
-                    publish_SAME_status(&same_status);
+   while (true) {
+      // TODO: check status registers for interesting things here and force a
+      // mqtt message or heartbeat if anything interesting happens
+      struct Si4707_SAME_Status_FullResponse same_status;
+      struct Si4707_SAME_Status_Params same_params;
+      struct Si4707_RSQ_Status rsq_status;
+      uint8_t status = 0;
 
 
-                    free_Si4707_SAME_Status_FullResponse(&same_status);
-                } else {
-                    puts("SAME status CTS timed out :(");
-                }
-            }
+      if (g_Si4707_booted_successfully) {
+         bool rev_cts = await_si4707_cts(100);
+         if (rev_cts) {
+            get_si4707_rev();
+         }
 
-            // DHCP maintenance
-            if (microseconds_since_last_DHCP_run > dhcp_interval) {
-                last_DHCP_run = now;
-                puts("updating DHCP");
-                dhcp_run_wrapper();
-                puts("done updating DHCP");
-            } else {
-                uint64_t microseconds_to_next_DHCP_run = dhcp_interval - microseconds_since_last_DHCP_run;
-                int seconds_to_next_DHCP_run = floor(microseconds_to_next_DHCP_run / 1000000.0); // NOLINT(*-narrowing-conversions)
-                printf("next DHCP run in about %d seconds\n", seconds_to_next_DHCP_run);
-            }
+         bool rsq_cts = await_si4707_cts(100);
+         if (rsq_cts) {
+            status = read_status();
 
-            gpio_put(PICO_DEFAULT_LED_PIN, 0);
-            main_loops++;
-        }
+            // TODO:  invert this (implies: parameterize print_si4707_rsq)
+            print_si4707_rsq();
+            get_si4707_rsq(&rsq_status);
+         } else {
+            puts("RSQ/SAME status CTS timed out :(");
+         }
+
+         bool same_cts = await_si4707_cts(100);
+         if (same_cts) {
+            same_params.INTACK = 0;     // leave it alone
+            same_params.READADDR = 0;
+            get_si4707_same_status(&same_params, &same_status);
+
+            // TODO: check SAME status for interval-reducing and interval-increasing
+            // changes like SOMDET and EOMDET
+
+            free_Si4707_SAME_Status_FullResponse(&same_status);
+         } else {
+            puts("SAME status CTS timed out :(");
+         }
+      }
 
 
-        busy_wait_ms(10);
-        outer_loops_since_last_heartbeat++;
-       
-    }
+      if (outer_loops_since_last_heartbeat % 50 == 0) {
+         printf(".");
+         //printf("outerloop %d\n", outer_loops_since_last_heartbeat);
+      }
+
+
+      uint64_t now = time_us_64();
+      uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
+      uint64_t microseconds_since_last_DHCP_run = now - last_DHCP_run;
+
+      if (microseconds_since_last_heartbeat > g_current_heartbeat_interval) {
+         if (!(status & 0x01)) {
+            puts("tune invalid :(");
+            printf("(status %d)\n", status);
+         }
+
+         struct Si4707_Heartbeat heartbeat;
+         heartbeat.iteration = main_loops;
+         heartbeat.si4707_started = g_Si4707_booted_successfully;
+         heartbeat.snr = rsq_status.ASNR;
+         heartbeat.rssi = rsq_status.RSSI;
+         publish_heartbeat(&heartbeat);
+
+         last_heartbeat = now;
+         outer_loops_since_last_heartbeat = 0;
+         puts("\n\n=========================");
+         gpio_put(PICO_DEFAULT_LED_PIN, 1);
+
+         printf("printing SAME status\n");
+         print_si4707_same_status(&same_status);
+         printf("publishing SAME status\n");
+         publish_SAME_status(&same_status);
+
+         // bus_scan();
+
+         // DHCP maintenance
+         last_DHCP_run = maintain_dhcp_lease(dhcp_interval, now, microseconds_since_last_DHCP_run);
+
+         gpio_put(PICO_DEFAULT_LED_PIN, 0);
+         main_loops++;
+      }
+
+
+      busy_wait_ms(100);
+      outer_loops_since_last_heartbeat++;
+   }
 #pragma clang diagnostic pop
-    
-    return 0;
+
+   return 0;
 }
