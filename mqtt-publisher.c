@@ -126,8 +126,10 @@ int dhcp_wait() {
 		/* Assigned IP through DHCP */
 		if (g_net_info.dhcp == NETINFO_DHCP)
 		{
+            // printf("DHCP_run()...");
 			retval = DHCP_run();
-	
+	        // printf(" returned %d\n", retval);
+
 			if (retval == DHCP_IP_LEASED)
 			{
 				if (g_dhcp_get_ip_flag == 0)
@@ -152,7 +154,10 @@ int dhcp_wait() {
 			{
 				puts("DHCP client running, waiting...");
 			}
-	
+            else {
+                printf("dhcp_wait: unhandled retval = %d\n", retval);
+            }
+
 			if (dhcp_retry > DHCP_RETRY_COUNT)
 			{
 				printf(" DHCP failed\n");
@@ -162,7 +167,6 @@ int dhcp_wait() {
 				// TODO:  extract constant
 				return 99;
 			}
-			printf("dchp_wait: retval = %d\n", retval);
 
 			wizchip_delay_ms(1000); // wait for 1 second
 		}
@@ -175,7 +179,9 @@ int init_mqtt() {
 	int32_t retval;
 	
 	set_clock_khz();
-	
+
+    // in spite of this being called in main(), it also needs to be called here
+    // kmo 11 nov 2023 12h44
 	stdio_init_all();
 	
 	puts("initializing wiznet SPI");
