@@ -389,9 +389,8 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 		same_buf_params.READADDR = offset;
 		get_si4707_same_packet(&same_buf_params, &same_buf_packet);
 
-		printf("msg i before memcpy - same_buf = '%s\n'", same_buf);
 		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
-		printf("msg i after memcpy - same_buf = '%s'\n", same_buf);
+		printf("same_buf after memcpy %d: '%s'\n", i, same_buf);
 	}
 
 	// heap-allocated variables exit here
