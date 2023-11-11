@@ -1,1 +1,0 @@
-int bus_scan();

@@ -79,7 +79,6 @@ add_subdirectory(${PORT_DIR})
 
 add_executable(si4707-cpp 
                 si4707-cpp.c
-                bus_scan.c
                 si4707.c
                 mqtt-publisher.c
                 )
@@ -88,7 +87,7 @@ pico_set_program_name(si4707-cpp "si4707-cpp")
 pico_set_program_version(si4707-cpp "0.1")
 
 pico_enable_stdio_uart(si4707-cpp 1)
-pico_enable_stdio_usb(si4707-cpp 1)
+pico_enable_stdio_usb(si4707-cpp 0)
 
 # Add the standard library to the build
 target_link_libraries(si4707-cpp
