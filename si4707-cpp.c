@@ -61,24 +61,22 @@ void construct_and_publish_heartbeat(int main_loops, struct Si4707_RSQ_Status *r
     publish_heartbeat(&heartbeat);
 }
 
-void get_and_publish_full_SAME_status(struct Si4707_SAME_Status_Params *same_params,
-                                      struct Si4707_SAME_Status_FullResponse *same_status) {
+void get_and_publish_full_SAME_status(struct Si4707_SAME_Status_Params *same_params) {
+    struct Si4707_SAME_Status_FullResponse same_status;
     bool same_cts = await_si4707_cts(100);
     if (same_cts) {
         (*same_params).INTACK = 0;     // leave it alone
         (*same_params).READADDR = 0;
-        get_si4707_same_status(same_params, same_status);
+        get_si4707_same_status(same_params, &same_status);
 
     } else {
         puts("SAME status CTS timed out :(");
     }
 
     //printf("printing SAME status\n");
-    print_si4707_same_status(same_status);
+    print_si4707_same_status(&same_status);
     //printf("publishing SAME status\n");
-    publish_SAME_status(same_status);
-    free_Si4707_SAME_Status_FullResponse(same_status);
-    return (*same_params);
+    publish_SAME_status(&same_status);
 }
 
 int main() {
@@ -199,8 +197,6 @@ int main() {
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             printf("\n ====== heartbeating ======================================\n");
 
-            struct Si4707_SAME_Status_FullResponse same_status;
-
             print_si4707_rsq();
 
             if (!(status & 0x01)) {
@@ -212,7 +208,7 @@ int main() {
             last_heartbeat = now;
             outer_loops_since_last_heartbeat = 0;
 
-            get_and_publish_full_SAME_status(&same_params, &same_status);
+            get_and_publish_full_SAME_status(&same_params);
 
             last_DHCP_run = maintain_dhcp_lease(dhcp_interval, now, last_DHCP_run);
 
