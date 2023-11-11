@@ -106,7 +106,11 @@ void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response);
 
 void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status);
 
+void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params,
+                            struct Si4707_SAME_Status_Packet *packet);
+
 void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, 
 							struct Si4707_SAME_Status_FullResponse *full_response);
-// TODO:
+
+// TODO: docs
 
