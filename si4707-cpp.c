@@ -68,7 +68,6 @@ void get_and_publish_full_SAME_status(struct Si4707_SAME_Status_Params *same_par
         (*same_params).INTACK = 0;     // leave it alone
         (*same_params).READADDR = 0;
         get_si4707_same_status(same_params, &same_status);
-
     } else {
         puts("SAME status CTS timed out :(");
     }
@@ -77,6 +76,8 @@ void get_and_publish_full_SAME_status(struct Si4707_SAME_Status_Params *same_par
     print_si4707_same_status(&same_status);
     //printf("publishing SAME status\n");
     publish_SAME_status(&same_status);
+
+    free_Si4707_SAME_Status_FullResponse(&same_status);
 }
 
 int main() {
