@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "pico/stdlib.h"
-// TODO:  remove i2c needs from this file
-#include "hardware/i2c.h"
+
 #include "hardware/timer.h"
 
 #include "pico/unique_id.h"
@@ -17,12 +16,6 @@ bool g_Si4707_booted_successfully = false;
 char g_board_id_string[32];
 
 int64_t g_current_heartbeat_interval = 5000000;    // 5000000 microseconds = 5 seconds
-
-//int64_t alarm_callback(alarm_id_t id, void *user_data) {
-//    // not really doing anything right now.  just a demo.
-//    puts("alarm_callback!");
-//    return 0;
-//}
 
 void prepare() {
     // this is also called in mqtt-publisher.c which i find suspect.  kmo 11 nov 2023 13h50
@@ -65,8 +58,9 @@ void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *sa
     struct Si4707_SAME_Status_FullResponse same_status;
     const bool same_cts = await_si4707_cts(100);
     if (same_cts) {
-        (*same_params).INTACK = 0;     // leave it alone
-        (*same_params).READADDR = 0;
+        if (same_params->CLRBUF) {
+            puts("get_and_publish_full_SAME_status:  clearing buffer");
+        }
         get_si4707_same_status(same_params, &same_status);
     } else {
         puts("SAME status CTS timed out :(");
@@ -138,7 +132,6 @@ int main() {
     uint64_t last_heartbeat = 0;
     uint64_t last_DHCP_run = 0;
 
-    static uint64_t heartbeat_interval = 5000000;  // 5000000 microseconds = 5 seconds
     static uint64_t dhcp_interval = (uint64_t) 60 * (uint64_t) 60 * 1000000; // 60 minutes
     // static uint64_t dhcp_interval = (uint64_t)20 * (uint64_t)1000000; // 60 seconds
 
@@ -174,9 +167,9 @@ int main() {
                     // SOM, not EOM:  fast
                     // SOM + EOM = slow down again
                     if (same_packet.SOMDET && !same_packet.EOMDET) {
-                        heartbeat_interval = 500000; // 0.5 seconds
+                        g_current_heartbeat_interval = 500000; // 0.5 seconds
                     } else {
-                        heartbeat_interval = 5000000; // 5 seconds
+                        g_current_heartbeat_interval = 5000000; // 5 seconds
                     }
 
                 }
