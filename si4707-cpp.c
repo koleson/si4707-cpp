@@ -37,15 +37,15 @@ void prepare() {
 }
 
 uint64_t maintain_dhcp_lease(uint64_t dhcp_interval, uint64_t now, uint64_t last_DHCP_run) {
-    uint64_t microseconds_since_last_DHCP_run = now - last_DHCP_run;
+    const uint64_t microseconds_since_last_DHCP_run = now - last_DHCP_run;
     if (microseconds_since_last_DHCP_run > dhcp_interval) {
         last_DHCP_run = now;
         puts("updating DHCP");
         dhcp_run_wrapper();
         puts("done updating DHCP");
     } else {
-        uint64_t microseconds_to_next_DHCP_run = dhcp_interval - microseconds_since_last_DHCP_run;
-        int seconds_to_next_DHCP_run = floor(
+        const uint64_t microseconds_to_next_DHCP_run = dhcp_interval - microseconds_since_last_DHCP_run;
+        const int seconds_to_next_DHCP_run = floor(
                 microseconds_to_next_DHCP_run / 1000000.0); // NOLINT(*-narrowing-conversions)
         printf("next DHCP run in about %d seconds\n", seconds_to_next_DHCP_run);
     }
@@ -61,9 +61,9 @@ void construct_and_publish_heartbeat(int main_loops, struct Si4707_RSQ_Status *r
     publish_heartbeat(&heartbeat);
 }
 
-void get_and_publish_full_SAME_status(struct Si4707_SAME_Status_Params *same_params) {
+void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *same_params) {
     struct Si4707_SAME_Status_FullResponse same_status;
-    bool same_cts = await_si4707_cts(100);
+    const bool same_cts = await_si4707_cts(100);
     if (same_cts) {
         (*same_params).INTACK = 0;     // leave it alone
         (*same_params).READADDR = 0;
@@ -120,7 +120,7 @@ int main() {
 
     power_up_si4707();
 
-    int cts = await_si4707_cts(500);
+    const int cts = await_si4707_cts(500);
     if (cts) {
         puts("si4707 CTS - getting rev and tuning");
         get_si4707_rev();
@@ -155,7 +155,7 @@ int main() {
 
         if (g_Si4707_booted_successfully) {
 
-            bool rsq_cts = await_si4707_cts(100);
+            const bool rsq_cts = await_si4707_cts(100);
             if (rsq_cts) {
                 status = read_status();
                 get_si4707_rsq(&rsq_status);
@@ -163,7 +163,7 @@ int main() {
                 puts("RSQ/SAME status CTS timed out :(");
             }
 
-            bool same_packet_cts = await_si4707_cts(100);
+            const bool same_packet_cts = await_si4707_cts(100);
             if (same_packet_cts) {
                 same_params.INTACK = 0;
                 same_params.READADDR = 0;
@@ -190,8 +190,8 @@ int main() {
         }
 
 
-        uint64_t now = time_us_64();
-        uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
+        const uint64_t now = time_us_64();
+        const uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
 
 
         if (microseconds_since_last_heartbeat > g_current_heartbeat_interval) {

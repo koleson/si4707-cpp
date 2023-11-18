@@ -83,7 +83,7 @@ void reset_si4707() {
 	puts("done resetting Si4707");
 }
 
-bool await_si4707_cts(int maxWait) {
+bool await_si4707_cts(const int maxWait) {
 	//puts("waiting for cts");
 	
 	int i = 0;
@@ -141,8 +141,8 @@ void power_up_si4707() {
 
 void tune_si4707() {
 	puts("tuning si4707 to 162.475MHz");
-	uint8_t freqHigh = 0xFD;
-	uint8_t freqLow = 0xDE;
+	const uint8_t freqHigh = 0xFD;
+	const uint8_t freqLow = 0xDE;
 	
 	uint8_t cmd[9] = { 0x00 };
 	cmd[0] = SI4707_SPI_SEND_CMD;       // write a command (drives 8 bytes on SDIO)
@@ -151,7 +151,7 @@ void tune_si4707() {
 	cmd[3] = freqHigh;
 	cmd[4] = freqLow;
 	
-	bool cts = await_si4707_cts(CTS_WAIT);
+	const bool cts = await_si4707_cts(CTS_WAIT);
 	if (cts) {
 		si4707_cs_select();
 		spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
@@ -165,7 +165,7 @@ void tune_si4707() {
 	// kmo 10 oct 2023 21h54
 }
 
-void send_command(uint8_t cmd, struct Si4707_Command_Args* args) {
+void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     uint8_t cmd_buf[9] = { 0x00 };
     cmd_buf[0] = SI4707_SPI_SEND_CMD;         // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
     cmd_buf[1] = cmd;
@@ -177,7 +177,7 @@ void send_command(uint8_t cmd, struct Si4707_Command_Args* args) {
     spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
     si4707_cs_deselect();
 
-    bool cts = await_si4707_cts(CTS_WAIT);
+    const bool cts = await_si4707_cts(CTS_WAIT);
     if (cts) {
         uint8_t resp_buf[16] = { 0x00 };
         read_resp(resp_buf);
@@ -186,7 +186,7 @@ void send_command(uint8_t cmd, struct Si4707_Command_Args* args) {
     }
 }
 
-void send_command_noargs(uint8_t cmd) {
+void send_command_noargs(const uint8_t cmd) {
 	struct Si4707_Command_Args args;
     args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
     args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
@@ -213,7 +213,7 @@ void read_resp(uint8_t* resp) {
 	resp_cmd[0] = 0xE0;        // read 16 response bytes via GPO1
 	
 
-	bool cts = await_si4707_cts(CTS_WAIT);
+	const bool cts = await_si4707_cts(CTS_WAIT);
 	if (cts) {
 		si4707_cs_select();
 		spi_write_blocking(SI4707_SPI_PORT, resp_cmd, 1);
@@ -227,7 +227,7 @@ void read_resp(uint8_t* resp) {
 void get_si4707_rev() {
 	uint8_t product_data[16] = { 0x00 };
 	
-	bool cts_cmd = await_si4707_cts(CTS_WAIT);
+	const bool cts_cmd = await_si4707_cts(CTS_WAIT);
 	if (cts_cmd) {
 		send_command_noargs(SI4707_CMD_GET_REV);
 	} else {
@@ -235,11 +235,11 @@ void get_si4707_rev() {
 		return;
 	}
 	
-	bool cts_read = await_si4707_cts(CTS_WAIT);
+	const bool cts_read = await_si4707_cts(CTS_WAIT);
 	if (cts_read) {
 		read_resp(product_data);
 		
-		uint8_t pn = product_data[1];
+		const uint8_t pn = product_data[1];
 		// printf("product number: %d\n", pn);
 		
 		if (pn != 7) {
@@ -248,6 +248,7 @@ void get_si4707_rev() {
             // halt
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
+			// ReSharper disable once CppDFAEndlessLoop
 			while (true) {
 				busy_wait_ms(100000);
 			}
@@ -255,17 +256,17 @@ void get_si4707_rev() {
 		}
 	} else {
 		puts("could not read product info - CTS timeout");
-		return;
 	}
 }
 
 void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
 	send_command_noargs(SI4707_CMD_WB_RSQ_STATUS);
+
 	read_resp(wb_rsq_resp);
-	uint8_t valid = wb_rsq_resp[2] & 0x01;
-	uint8_t rssi = wb_rsq_resp[4];
-	uint8_t snr = wb_rsq_resp[5];
+	const uint8_t valid = wb_rsq_resp[2] & 0x01;
+	const uint8_t rssi = wb_rsq_resp[4];
+	const uint8_t snr = wb_rsq_resp[5];
 	
 	rsq_status->RSSI = rssi;
 	rsq_status->ASNR = snr;
@@ -279,7 +280,7 @@ void print_si4707_rsq()
 	printf("%4d  %3d\n\n", status.RSSI, status.ASNR);
 }
 
-void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params, 
+void get_si4707_same_packet(const struct Si4707_SAME_Status_Params *params,
 							struct Si4707_SAME_Status_Packet *packet) {
 	uint8_t wb_same_resp[16] = { 0x00 };
 
@@ -317,7 +318,7 @@ void get_si4707_same_packet(struct Si4707_SAME_Status_Params *params,
 	memcpy(packet->DATA, wb_same_resp+6, 8);
 }
 
-void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
+void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
 {
 	struct Si4707_SAME_Status_Packet first_packet;
 
@@ -342,8 +343,8 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
     // printf("get_si4707_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
 
 	// maximum message length is ~250 chars.
-	int whole_responses_needed = first_packet.MSGLEN / 8;
-	int remainder = first_packet.MSGLEN % 8;
+	const int whole_responses_needed = first_packet.MSGLEN / 8;
+	const int remainder = first_packet.MSGLEN % 8;
 	int responses_needed;
 	
 	// kmo 18 oct 2023 10h51:  seems like this is still under-counting
@@ -358,11 +359,11 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 
 	// TODO:  malloc size based on MSGLEN.  kmo 18 oct 2023 15h54
 	// MSGLEN can be at most 255, so adding null termination, 256 max length
-	int alloc_length = 256;
-	uint8_t* same_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
+	const int alloc_length = 256;
+	uint8_t* same_buf = malloc(sizeof(uint8_t) * alloc_length);
 
     // TODO: confidence might not actually need to be this big? kmo 4 nov 2023 11h23
-    uint8_t* conf_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
+    uint8_t* conf_buf = malloc(sizeof(uint8_t) * alloc_length);
 	
 	// auto-null-termination
 	for (int i = 0; i < alloc_length; i++) {
@@ -375,8 +376,8 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
 	same_buf_params.READADDR = 0;
 
 	for (int i = 0; i < whole_responses_needed; i++) {
-		int offset = i * 8;
-		int chars_remaining = first_packet.MSGLEN - (i * 8);
+		const int offset = i * 8;
+		const int chars_remaining = first_packet.MSGLEN - (i * 8);
 		same_buf_params.READADDR = offset;
 		
 		int chars_to_read;
@@ -398,7 +399,7 @@ void get_si4707_same_status(struct Si4707_SAME_Status_Params *params, struct Si4
     full_response->CONF = conf_buf;
 }
 
-void print_si4707_same_status(struct Si4707_SAME_Status_FullResponse* response) {
+void print_si4707_same_status(const struct Si4707_SAME_Status_FullResponse* response) {
 	puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
 	printf("%6d %6d %6d %6d %5d %6d\n", 
 				response->EOMDET, response->SOMDET, response->PREDET, 
