@@ -1,5 +1,7 @@
 // make a struct for RSQ data
 // make a struct for SAME data
+#ifndef SI4707_H
+#define SI4707_H
 
 struct Si4707_Heartbeat {
 	// int i, bool si4707_started, uint8_t rssi, uint8_t snr, bool tune_valid
@@ -114,3 +116,4 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params,
 
 // TODO: docs
 
+#endif // SI4707_H
