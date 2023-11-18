@@ -45,7 +45,7 @@ uint64_t maintain_dhcp_lease(uint64_t dhcp_interval, uint64_t now, uint64_t last
     return last_DHCP_run;
 }
 
-void construct_and_publish_heartbeat(int main_loops, struct Si4707_RSQ_Status *rsq_status) {
+void construct_and_publish_heartbeat(int main_loops, const struct Si4707_RSQ_Status *rsq_status) {
     struct Si4707_Heartbeat heartbeat;
     heartbeat.iteration = main_loops;
     heartbeat.si4707_started = g_Si4707_booted_successfully;
