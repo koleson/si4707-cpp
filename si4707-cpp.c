@@ -74,6 +74,23 @@ void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *sa
     free_Si4707_SAME_Status_FullResponse(&same_status);
 }
 
+void set_heartbeat_interval_for_SAME_state(const int same_state) {
+    // TODO:  make SAME state constants.  kmo 22 nov 2023 11h33
+    if (same_state > 0) {
+        // TODO:  reduce this even further - say, 0.2 or 0.1 seconds.  kmo 22 nov 2023 11h35
+        if (g_current_heartbeat_interval > 500000) {
+            // 0.5 seconds
+            puts("SAME state > 0 - reducing heartbeat interval to 0.5 seconds");
+            g_current_heartbeat_interval = 500000;
+        }
+    } else {
+        if (g_current_heartbeat_interval < 5000000) {
+            puts("SAME state 0 - reducing heartbeat interval to 5 seconds");
+            g_current_heartbeat_interval = 5000000;
+        }
+    }
+}
+
 int main() {
     prepare();
 
@@ -162,17 +179,7 @@ int main() {
                 same_params.READADDR = 0;
                 get_si4707_same_packet(&same_params, &same_packet);
 
-                //printf("EOMDET = %d / SOMDET = %d\n", same_packet.EOMDET, same_packet.SOMDET);
-                if (same_packet.EOMDET || same_packet.SOMDET) {
-                    // SOM, not EOM:  fast
-                    // SOM + EOM = slow down again
-                    if (same_packet.SOMDET && !same_packet.EOMDET) {
-                        g_current_heartbeat_interval = 500000; // 0.5 seconds
-                    } else {
-                        g_current_heartbeat_interval = 5000000; // 5 seconds
-                    }
-
-                }
+                set_heartbeat_interval_for_SAME_state(same_packet.STATE);
             }
         }
 
