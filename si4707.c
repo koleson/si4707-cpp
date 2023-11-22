@@ -1,3 +1,4 @@
+// ReSharper disable CppRedundantParentheses
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -107,7 +108,7 @@ bool await_si4707_cts(const int maxWait) {
 		printf("cts wait-loop timed out (%d patience)\n", maxWait);
 		return false;
 	}
-	
+
 	//printf("cts wait-loop exit status: %d\n\n", status);
 }
 
