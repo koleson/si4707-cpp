@@ -1,2 +1,6 @@
 build
 .DS_Store
+.cache
+build*
+# no idea where this folder came from.  kmo 22 nov 2023 12h12
+cmake-build-debug
