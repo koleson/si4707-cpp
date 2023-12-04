@@ -72,6 +72,7 @@ add_subdirectory(${PORT_DIR})
 add_executable(si4707-cpp 
                 si4707-cpp.c
                 si4707.c
+                si4707_structs.c
                 mqtt-publisher.c
                 )
 
