@@ -1,0 +1,12 @@
+bugs:
+- number of messages needed to get message seems to be off-by-one for 60 char messages
+
+short-term:
+- clear SAME message buffer and interrupts
+- include confidence data in MQTT output
+
+long-term:
+- si4707:  allocate SAME buffers based on MSGLEN
+- add DNS lookup of hostname
+- emit MQTT of SAME state on SAME state changes rather than fixed interval
+  - need to store and have convenience comparison of SAME state
