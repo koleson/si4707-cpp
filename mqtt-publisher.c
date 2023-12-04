@@ -18,45 +18,30 @@
 
 #include "mqtt-publisher.h"
 
-#define VERSION "2023.11.04"
+#include "settings.h"
 
-/* Clock */
-#define PLL_SYS_KHZ (133 * 1000)
+
 
 /* Buffer */
 #define ETHERNET_BUF_MAX_SIZE (1024 * 2)
 
-/* Socket */
+/* Hardware Offload Socket */
 #define SOCKET_DHCP 0
 #define SOCKET_DNS 1
 #define SOCKET_MQTT 2
 
-/* Port */
-#define PORT_MQTT 1883
-
 /* Timeout */
 #define DEFAULT_TIMEOUT 1000 // 1 second
-
-/* MQTT */
-#define MQTT_CLIENT_ID "rpi-pico-si4707"
-#define MQTT_USERNAME "wiznet"
-#define MQTT_PASSWORD "wizn3t"
-#define MQTT_PUBLISH_TOPIC "si4707"
-#define MQTT_PUBLISH_PAYLOAD "Hello, World!"
-#define MQTT_KEEP_ALIVE 60              // 60 milliseconds
-
-/* Socket */
-
 
 /* Network */
 static wiz_NetInfo g_net_info =
 	{
-		.mac = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x99}, // MAC address
-		.ip = {0, 0, 0, 0},                     // IP address
-		.sn = {255, 255, 255, 0},                    // Subnet Mask
-		.gw = {0, 0, 0, 0},                     // Gateway
-		.dns = {8, 8, 8, 8},                         // DNS server
-		.dhcp = NETINFO_DHCP                       // DHCP enable/disable
+		.mac = MAC, 					// MAC address
+		.ip = {0, 0, 0, 0},				// IP address
+		.sn = {255, 255, 255, 0},		// Subnet Mask
+		.gw = {0, 0, 0, 0},				// Gateway
+		.dns = {8, 8, 8, 8},			// DNS server
+		.dhcp = NETINFO_DHCP			// DHCP enable/disable
 };
 
 /* MQTT */
@@ -67,7 +52,7 @@ static uint8_t g_mqtt_recv_buf[ETHERNET_BUF_MAX_SIZE] = {
 	0,
 };
 
-static uint8_t g_mqtt_broker_ip[4] = {10, 0, 1, 33};
+static uint8_t g_mqtt_broker_ip[4] = MQTT_BROKER_IP;
 static Network g_mqtt_network;
 static MQTTClient g_mqtt_client;
 static MQTTPacket_connectData g_mqtt_packet_connect_data = MQTTPacket_connectData_initializer;
@@ -84,6 +69,7 @@ char* heartbeat_topic_suffix = "heartbeat";
 static uint8_t g_dhcp_get_ip_flag = 0;
 
 /* DNS */
+// TODO:  not currently in use - need to add DNS lookup.  kmo 22 nov 2023 13h12
 static uint8_t g_dns_target_domain[] = "orangepi5.tworock.lan";
 static uint8_t g_dns_target_ip[4] = {
 	0,
@@ -173,6 +159,39 @@ int dhcp_wait() {
 	}
 }
 
+int connect_mqtt() {
+	/* Initialize MQTT client */
+	MQTTClientInit(&g_mqtt_client, &g_mqtt_network, DEFAULT_TIMEOUT, g_mqtt_send_buf, ETHERNET_BUF_MAX_SIZE, g_mqtt_recv_buf, ETHERNET_BUF_MAX_SIZE);
+	
+	/* Connect to the MQTT broker */
+	g_mqtt_packet_connect_data.MQTTVersion = 3;
+	g_mqtt_packet_connect_data.cleansession = 1;
+	g_mqtt_packet_connect_data.willFlag = 0;
+	g_mqtt_packet_connect_data.keepAliveInterval = MQTT_KEEP_ALIVE;
+	g_mqtt_packet_connect_data.clientID.cstring = MQTT_CLIENT_ID;
+	g_mqtt_packet_connect_data.username.cstring = MQTT_USERNAME;
+	g_mqtt_packet_connect_data.password.cstring = MQTT_PASSWORD;
+	
+	enum returnCode mqtt_connect_retval;
+	
+	mqtt_connect_retval = MQTTConnect(&g_mqtt_client, &g_mqtt_packet_connect_data);
+	
+	if (mqtt_connect_retval < 0)
+	{
+		printf(" MQTT connect failed : %d\n", mqtt_connect_retval);
+	
+		// TODO:  extract constant
+		return 97;
+	}
+	
+	if (mqtt_connect_retval == FAILURE) {
+		printf("MQTT Connect Failed: %d", mqtt_connect_retval);
+	}
+	
+	printf(" MQTT connected (mqtt_connect_retval: %d)\n", mqtt_connect_retval);
+	return 1;
+}
+
 int init_mqtt() {
 	puts("mqtt-publisher: init_mqtt()");
 	/* Initialize */
@@ -223,7 +242,7 @@ int init_mqtt() {
 	NewNetwork(&g_mqtt_network, SOCKET_MQTT);
 	
 	puts("connecting to mqtt server");
-	retval = ConnectNetwork(&g_mqtt_network, g_mqtt_broker_ip, PORT_MQTT);
+	retval = ConnectNetwork(&g_mqtt_network, g_mqtt_broker_ip, MQTT_PORT);
 	
 	if (retval != 1)
 	{
@@ -233,36 +252,12 @@ int init_mqtt() {
 		return 98;
 	}
 	
-	/* Initialize MQTT client */
-	MQTTClientInit(&g_mqtt_client, &g_mqtt_network, DEFAULT_TIMEOUT, g_mqtt_send_buf, ETHERNET_BUF_MAX_SIZE, g_mqtt_recv_buf, ETHERNET_BUF_MAX_SIZE);
-	
-	/* Connect to the MQTT broker */
-	g_mqtt_packet_connect_data.MQTTVersion = 3;
-	g_mqtt_packet_connect_data.cleansession = 1;
-	g_mqtt_packet_connect_data.willFlag = 0;
-	g_mqtt_packet_connect_data.keepAliveInterval = MQTT_KEEP_ALIVE;
-	g_mqtt_packet_connect_data.clientID.cstring = MQTT_CLIENT_ID;
-	g_mqtt_packet_connect_data.username.cstring = MQTT_USERNAME;
-	g_mqtt_packet_connect_data.password.cstring = MQTT_PASSWORD;
-	
-	enum returnCode mqtt_connect_retval;
-	
-	mqtt_connect_retval = MQTTConnect(&g_mqtt_client, &g_mqtt_packet_connect_data);
-	
-	if (mqtt_connect_retval < 0)
-	{
-		printf(" MQTT connect failed : %d\n", mqtt_connect_retval);
-	
-		// TODO:  extract constant
-		return 97;
+	const int mqtt_retval = connect_mqtt();
+	if (mqtt_retval != 1) {
+		printf("MQTT connect failed");
+		return mqtt_retval;
 	}
 	
-	if (mqtt_connect_retval == FAILURE) {
-		printf("MQTT Connect Failed: %d", mqtt_connect_retval);
-	}
-	
-	printf(" MQTT connected (mqtt_connect_retval: %d)\n", mqtt_connect_retval);
-
     publish_hello_world();
 	
 	puts("mqtt-publisher:  init_mqtt() complete!");
@@ -272,12 +267,10 @@ int init_mqtt() {
 int publish_hello_world()
 {
 	puts("publish_hello_world()");
-	int mqtt_retval = publish(MQTT_PUBLISH_TOPIC, MQTT_PUBLISH_PAYLOAD);
+	int mqtt_retval = publish(MQTT_ROOT_TOPIC, MQTT_PUBLISH_PAYLOAD);
 	
 	return mqtt_retval;
 }
-
-
 
 void update_root_topic(char* new_topic_root) 
 {
