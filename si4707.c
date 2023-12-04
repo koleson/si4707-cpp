@@ -18,7 +18,7 @@
 // TODO:  parameterize - take in MOSI, MISO, CS, SCK
 void setup_si4707_spi() {
 	puts("setting up SPI");
-	// SPI initialization. This example will use SPI at 100kHz.
+	// SPI initialization. 400kHz.
 	spi_init(SI4707_SPI_PORT, 400*1000);
 	gpio_set_function(SI4707_SPI_MISO, GPIO_FUNC_SPI);
 	gpio_set_function(SI4707_SPI_CS,   GPIO_FUNC_SIO);
@@ -319,44 +319,55 @@ void get_si4707_same_packet(const struct Si4707_SAME_Status_Params *params,
 	memcpy(packet->DATA, wb_same_resp+6, 8);
 }
 
-void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
-{
-	struct Si4707_SAME_Status_Packet first_packet;
-
-	get_si4707_same_packet(params, &first_packet);
-
+void _copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_Status_Packet * status_packet, struct Si4707_SAME_Status_FullResponse * full_response) {
 	// byte 0
-	full_response->CTS = 		first_packet.CTS;
-	full_response->ERR =		first_packet.ERR;
-	full_response->RSQINT =		first_packet.RSQINT;
-	full_response->SAMEINT = 	first_packet.SAMEINT;
-	full_response->ASQINT =		first_packet.ASQINT;
-	full_response->STCINT =		first_packet.STCINT;
+	full_response->CTS = 		status_packet->CTS;
+	full_response->ERR =		status_packet->ERR;
+	full_response->RSQINT =		status_packet->RSQINT;
+	full_response->SAMEINT = 	status_packet->SAMEINT;
+	full_response->ASQINT =		status_packet->ASQINT;
+	full_response->STCINT =		status_packet->STCINT;
 
 	// byte 1
-	full_response->EOMDET = 	first_packet.EOMDET;
-	full_response->SOMDET = 	first_packet.SOMDET;
-	full_response->PREDET = 	first_packet.PREDET;
-	full_response->HDRRDY = 	first_packet.HDRRDY;
+	full_response->EOMDET = 	status_packet->EOMDET;
+	full_response->SOMDET = 	status_packet->SOMDET;
+	full_response->PREDET = 	status_packet->PREDET;
+	full_response->HDRRDY = 	status_packet->HDRRDY;
 
-	full_response->STATE  = 	first_packet.STATE;
-	full_response->MSGLEN = 	first_packet.MSGLEN;
+	full_response->STATE  = 	status_packet->STATE;
+	full_response->MSGLEN = 	status_packet->MSGLEN;
     // printf("get_si4707_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
+}
 
+int _responses_needed(int msglen) {
 	// maximum message length is ~250 chars.
-	const int whole_responses_needed = first_packet.MSGLEN / 8;
-	const int remainder = first_packet.MSGLEN % 8;
+	const int whole_responses_needed = msglen / 8;
+	const int remainder = msglen % 8;
 	int responses_needed;
 	
 	// kmo 18 oct 2023 10h51:  seems like this is still under-counting
-    // kmo 20 oct 2023 18h03:  i think i fixed the undercounting.
+    // kmo 20 oct 2023 18h03:  I think I fixed the undercounting.
+	// kmo 22 nov 2023 15h19:  this remains an enigma, computer science!
 	if (remainder > 0) {
 		responses_needed = whole_responses_needed + 1;
 	} else {
 		responses_needed = whole_responses_needed;
 	}
 
-	printf("%d responses needed to get message of length %d\n", responses_needed, first_packet.MSGLEN);
+	printf("%d responses needed to get message of length %d\n", responses_needed, msglen);
+
+	return responses_needed;
+}
+
+void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
+{
+	struct Si4707_SAME_Status_Packet first_packet;
+
+	get_si4707_same_packet(params, &first_packet);
+
+	_copy_si4707_status_packet_to_full_response(&first_packet, full_response);
+
+	int whole_responses_needed = _responses_needed(first_packet.MSGLEN);
 
 	// TODO:  malloc size based on MSGLEN.  kmo 18 oct 2023 15h54
 	// MSGLEN can be at most 255, so adding null termination, 256 max length
@@ -376,16 +387,40 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 	same_buf_params.INTACK = 0;
 	same_buf_params.READADDR = 0;
 
+
+	// NOTE:  The length reported by MSGLEN must include the implicit
+	// ZCZC?  (Narrator:  It does not.)
+	
+	// preamble: This is a consecutive string of bits (sixteen bytes of AB 
+	// hexadecimal [8 bit byte 10101011]) sent to clear the system, set AGC and 
+	// set asynchronous decoder clocking cycles. The preamble must be 
+	// transmitted before each header and End Of Message code.
+	
+	// AN332:  "[MSGLEN] excludes the preamble and the header code block identifier 'ZCZC'."
+	// So I guess MSGLEN includes low-confidence garbage bytes at the end of the buffer?
+	// kmo 22 nov 2023 16h32
+	// confirmed - MSGLEN includes 0-confidence garbage bytes.
+	// kmo 22 nov 2023 16h38
+	
+	// in practice, the 3 bytes following the SAME message seem to be null characters (0x00).
+	// but i don't have sufficient data points to say if that's universal or not, so eventually
+	// i will indeed need to mask using the confidence data.
+	// kmo 22 nov 2023 17h13
+	
 	for (int i = 0; i < whole_responses_needed; i++) {
 		const int offset = i * 8;
 		const int chars_remaining = first_packet.MSGLEN - (i * 8);
-		same_buf_params.READADDR = offset;
 		
 		int chars_to_read;
+
+        // kmo temp note:  this logic was reversed - was setting chars_to_read = 8 when chars_remaining <8;
+        // was setting chars_to_read = chars_remaining when chars_remaining >= 8.
+        // kmo 29 nov 2023 11h18
 		if (chars_remaining < 8) {
-			chars_to_read = 8;
-		} else {
+            printf("only reading %d chars in last copy\n", chars_remaining);
 			chars_to_read = chars_remaining;
+		} else {
+			chars_to_read = 8;
 		}
 
 		same_buf_params.READADDR = offset;
