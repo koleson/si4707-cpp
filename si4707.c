@@ -418,6 +418,7 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
         // kmo 29 nov 2023 11h18
 		if (chars_remaining < 8) {
             printf("only reading %d chars in last copy\n", chars_remaining);
+            printf("same_buf before final memcpy: '%s'\n", same_buf);
 			chars_to_read = chars_remaining;
 		} else {
 			chars_to_read = 8;
@@ -427,9 +428,9 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 		get_si4707_same_packet(&same_buf_params, &same_buf_packet);
 
 		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
-		printf("same_buf after memcpy %d: '%s'\n", i, same_buf);
 	}
 
+    printf("same_buf after memcpy loop: '%s'\n", same_buf);
 	// heap-allocated variables exit here
 	full_response->DATA = same_buf;
     full_response->CONF = conf_buf;
