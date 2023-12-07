@@ -145,11 +145,6 @@ void set_heartbeat_interval_for_SAME_state(const int same_state) {
 
             g_current_heartbeat_interval = 500000;
         }
-    } else {
-        if (g_current_heartbeat_interval < 5000000) {
-            puts("SAME state 0 - reducing heartbeat interval to 5 seconds");
-            g_current_heartbeat_interval = 5000000;
-        }
     }
 }
 
