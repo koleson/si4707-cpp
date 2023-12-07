@@ -151,6 +151,10 @@ int main() {
 
     static uint64_t dhcp_interval = (uint64_t) 60 * (uint64_t) 60 * 1000000; // 60 minutes
     // static uint64_t dhcp_interval = (uint64_t)20 * (uint64_t)1000000; // 60 seconds
+    if (!g_Si4707_booted_successfully) {
+        printf("Si4707 did not boot successfully, calling abort()...");
+        abort();
+    }
 
     // superloop
 #pragma clang diagnostic push
@@ -164,24 +168,23 @@ int main() {
         struct Si4707_RSQ_Status rsq_status;
         uint8_t status = 0;
 
-        if (g_Si4707_booted_successfully) {
+        const bool rsq_cts = await_si4707_cts(100);
+        if (rsq_cts) {
+            status = read_status();
+            get_si4707_rsq(&rsq_status);
+        } else {
+            puts("RSQ/SAME status CTS timed out :(");
+        }
 
-            const bool rsq_cts = await_si4707_cts(100);
-            if (rsq_cts) {
-                status = read_status();
-                get_si4707_rsq(&rsq_status);
-            } else {
-                puts("RSQ/SAME status CTS timed out :(");
-            }
+        const bool same_packet_cts = await_si4707_cts(100);
+        if (same_packet_cts) {
+            same_params.INTACK = 0;
+            same_params.READADDR = 0;
+            get_si4707_same_packet(&same_params, &same_packet);
 
-            const bool same_packet_cts = await_si4707_cts(100);
-            if (same_packet_cts) {
-                same_params.INTACK = 0;
-                same_params.READADDR = 0;
-                get_si4707_same_packet(&same_params, &same_packet);
-
-                set_heartbeat_interval_for_SAME_state(same_packet.STATE);
-            }
+            // TODO:  move all state logic into state_functions
+            //state_functions[system_state](&same_packet);
+            set_heartbeat_interval_for_SAME_state(same_packet.STATE);
         }
 
 
