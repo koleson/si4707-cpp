@@ -12,6 +12,59 @@
 #include "si4707.h"
 #include "mqtt-publisher.h"
 
+typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT } System_State;
+System_State system_state = IDLE;
+
+void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
+    if (status->PREDET == 1) {
+        printf("\n\n=== ZCZC - RECEIVING MESSAGE ===");
+        system_state = RECEIVING_HEADER;
+    }
+};
+
+void receiving_header_handler(const struct Si4707_SAME_Status_Packet *status) {
+    if (status->HDRRDY == 1) {
+        printf("\n\n=== SAME HEADER RECEIVED AND READY ===");
+        system_state = HEADER_READY;
+    }
+};
+
+void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
+    // TODO:  handle alert tone by getting ASQ status
+    // kmo 6 dec 2023 18h34
+
+    if (status->EOMDET == 1) {
+        printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===");
+        system_state = EOM_WAIT;
+    }
+};
+
+// TODO:  currently not handling alert tone or broadcast specially - requires ASQ data
+// kmo 6 dec 2023
+void alert_tone_handler() {};
+void broadcast_handler() {};
+
+void eom_wait_handler() {
+    // TODO:  implementing this correctly requires passing in timing information
+    // (or getting it directly, but in general prefer testability of passing in time)
+
+    // TODO:  check time before resetting interrupts, etc.
+    // TODO:  reset interrupts, etc.
+    printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===");
+    // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
+    // otherwise you will fly through all the various states unendingly.
+    // kmo 6 dec 2023 18h43
+
+};
+
+// system state machine
+
+typedef void (*System_State_Handler)(const struct Si4707_SAME_Status_Packet *);
+static System_State_Handler state_functions[] = {
+        idle_handler, receiving_header_handler, header_ready_handler,
+                                        alert_tone_handler, broadcast_handler, eom_wait_handler};
+
+
 bool g_Si4707_booted_successfully = false;
 char g_board_id_string[32];
 
