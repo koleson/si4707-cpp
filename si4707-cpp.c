@@ -100,11 +100,8 @@ void set_heartbeat_interval_for_SAME_state(const int same_state) {
     }
 }
 
-int main() {
+int oneshot() {
     prepare();
-
-    // must `prepare` before trying to print this message.  kmo 9 oct 2023 17h29
-    puts("si4707-cpp: main()");
 
     pico_unique_board_id_t board_id;
     pico_get_unique_board_id(&board_id);
@@ -139,7 +136,6 @@ int main() {
     setup_si4707_spi();
 
     power_up_si4707();
-
     const int cts = await_si4707_cts(500);
     if (cts) {
         puts("si4707 CTS - getting rev and tuning");
@@ -150,8 +146,13 @@ int main() {
     } else {
         puts("failed to start si4707 :(");
     }
+}
 
-    puts("oneshot done - LOOP TIME! ======");
+int main() {
+    oneshot();
+
+    // must `prepare` before trying to print this message.  kmo 9 oct 2023 17h29
+    puts("si4707-cpp: main() after oneshot()");
 
     int main_loops = 0;
     int outer_loops_since_last_heartbeat = 0;
