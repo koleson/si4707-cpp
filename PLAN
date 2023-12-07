@@ -2,7 +2,20 @@ bugs:
 - number of messages needed to get message seems to be off-by-one for 60 char messages
 
 short-term:
+- include git commit hash (and clean/dirty status) in binary/MQTT messages
 - clear SAME message buffer and interrupts
+  - need to determine appropriate timing/state indications here
+  - EOMDET = 1 at end of audio broadcast following activation
+  - STATE flips between 0 and 1 several times - once for each EOM marker (NNNN)
+    - each preamble/EOM marker takes a bit less than 0.4 seconds to transmit
+    - 1 second silence between each marker
+    - 3 seconds after first EOM seems like an adequate trap
+      - assumes EOMDET is only set to 1 at completion of 1 second silence + 0.4 second EOM marker
+    - prefer not to count EOMs since they might not all be received correctly
+    - if we got a header and get an EOM, we can be fairly sure we're done for that instance
+    - if 3 seconds has elapsed from first EOM, and state == 0, reset interrupts and clear SAME buffer
+      - send end-of-message MQTT output prior to resetting
+
 - include confidence data in MQTT output
 
 long-term:
