@@ -76,11 +76,20 @@ void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *sa
 
 void set_heartbeat_interval_for_SAME_state(const int same_state) {
     // TODO:  make SAME state constants.  kmo 22 nov 2023 11h33
-    if (same_state > 0) {
+    // NB: misnomer - "EOM" also state when no message has yet been received.
+    // kmo 6 dec 2023 15h31
+    if (same_state == SI4707_SAME_STATE_END_OF_MESSAGE) {
+        if (g_current_heartbeat_interval < 10000000) {
+            printf("\n\nSAME state 0 - reducing heartbeat interval to 10 seconds");
+            g_current_heartbeat_interval = 10000000;
+        }
+    } else {
         // TODO:  reduce this even further - say, 0.2 or 0.1 seconds.  kmo 22 nov 2023 11h35
         if (g_current_heartbeat_interval > 500000) {
             // 0.5 seconds
-            puts("SAME state > 0 - reducing heartbeat interval to 0.5 seconds");
+            printf("\n\nSAME state > 0 (%d) - reducing heartbeat interval to 0.5 seconds", same_state);
+
+
             g_current_heartbeat_interval = 500000;
         }
     } else {
