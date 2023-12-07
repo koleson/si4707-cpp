@@ -75,9 +75,18 @@
 #define SI4707_PROP_WB_SAME_INTERRUPT_SOURCE	0x5500
 
 // Si4707 SAME machine states
+// state when device has booted but not received anything; state after EOM is received
 #define SI4707_SAME_STATE_END_OF_MESSAGE 		0
+
+// state when device is receiving the calibration sequence for AFSK modem
 #define SI4707_SAME_STATE_PREAMBLE_DETECTED 	1
+
+// state when device is receiving SAME header (i.e. after ZCZC attention signal)
+// see also SOMDET (start of message detected)
 #define SI4707_SAME_STATE_RECEIVING_HEADER		2
+
+// state when device has received an entire SAME header
+// see also HDRRDY (header ready)
 #define SI4707_SAME_STATE_HEADER_COMPLETE		3
 
 // TODO:  this list of available properties is probably not complete.  check AN332.  kmo 9 oct 2023
