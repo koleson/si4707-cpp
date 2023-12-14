@@ -15,10 +15,20 @@
 typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT } System_State;
 System_State system_state = IDLE;
 
+static uint64_t gs_first_EOM_timestamp_us = 0;
+static bool reset_SAME_interrupts_and_buffer_on_next_status_check = false;
+static uint64_t gs_consecutive_idle_handler_executions = 0;
+
 void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
     if (status->PREDET == 1) {
         printf("\n\n=== ZCZC - RECEIVING MESSAGE ===");
         system_state = RECEIVING_HEADER;
+        gs_consecutive_idle_handler_executions = 0;
+    }
+    
+    gs_consecutive_idle_handler_executions++;
+    if (gs_consecutive_idle_handler_executions % 5 == 0) {
+        printf("i");
     }
 };
 
@@ -27,6 +37,7 @@ void receiving_header_handler(const struct Si4707_SAME_Status_Packet *status) {
         printf("\n\n=== SAME HEADER RECEIVED AND READY ===");
         system_state = HEADER_READY;
     }
+    printf("r");
 };
 
 void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
@@ -35,26 +46,32 @@ void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
 
     if (status->EOMDET == 1) {
         printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===");
+        gs_first_EOM_timestamp_us = time_us_64();
         system_state = EOM_WAIT;
+
     }
+    printf("h");
 };
 
 // TODO:  currently not handling alert tone or broadcast specially - requires ASQ data
 // kmo 6 dec 2023
-void alert_tone_handler() {};
-void broadcast_handler() {};
+void alert_tone_handler(const struct Si4707_SAME_Status_Packet *status) {};
+void broadcast_handler(const struct Si4707_SAME_Status_Packet *status) {};
 
-void eom_wait_handler() {
+
+void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
     // TODO:  implementing this correctly requires passing in timing information
     // (or getting it directly, but in general prefer testability of passing in time)
-
-    // TODO:  check time before resetting interrupts, etc.
-    // TODO:  reset interrupts, etc.
-    printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===");
-    // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
-    // otherwise you will fly through all the various states unendingly.
-    // kmo 6 dec 2023 18h43
-
+    uint64_t now = time_us_64();
+    if (now - gs_first_EOM_timestamp_us > 5000000) {
+        // TODO:  reset interrupts, etc.
+        printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===");
+        // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
+        // otherwise you will fly through all the various states unendingly.
+        // kmo 6 dec 2023 18h43
+        reset_SAME_interrupts_and_buffer_on_next_status_check = true;
+    }  
+    printf("e");
 };
 
 // system state machine
@@ -214,15 +231,28 @@ int main() {
         abort();
     }
 
-    // superloop
+    
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"        // yes, we know, thanks.
+    // superloop
     while (true) {
         //printf("superloop outer\n\n");
 
         struct Si4707_SAME_Status_Packet same_packet;
         struct Si4707_SAME_Status_Params same_params;
-        same_params.CLRBUF = false;
+
+        if (reset_SAME_interrupts_and_buffer_on_next_status_check) 
+        {
+            reset_SAME_interrupts_and_buffer_on_next_status_check = false;
+            same_params.CLRBUF = true;
+            same_params.INTACK = true;
+        } 
+        else 
+        {
+            same_params.CLRBUF = false;
+            same_params.INTACK = false;
+        }
+        
         struct Si4707_RSQ_Status rsq_status;
         uint8_t status = 0;
 
@@ -241,7 +271,7 @@ int main() {
             get_si4707_same_packet(&same_params, &same_packet);
 
             // TODO:  move all state logic into state_functions
-            //state_functions[system_state](&same_packet);
+            state_functions[system_state](&same_packet);
             set_heartbeat_interval_for_SAME_state(same_packet.STATE);
         }
 
