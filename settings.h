@@ -8,6 +8,7 @@
 
 // MQTT
 #define MQTT_BROKER_IP {10, 0, 1, 33}
+#define MQTT_BROKER_HOSTNAME "orangepi5.tworock.lan"    // not yet in use.
 #define MQTT_PORT 1883
 #define MQTT_USERNAME "wiznet"
 #define MQTT_PASSWORD "wizn3t"
@@ -17,4 +18,3 @@
 #define MQTT_ROOT_TOPIC "si4707"
 #define MQTT_PUBLISH_PAYLOAD "Hello, World!"
 #define MQTT_KEEP_ALIVE 60              // 60 milliseconds
-

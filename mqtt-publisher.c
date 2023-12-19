@@ -1,3 +1,5 @@
+// mostly from Wiznet examples.  kmo 19 dec 2023 11h36
+
 #include <stdio.h>
 #include <string.h>
 
@@ -62,7 +64,7 @@ static uint8_t g_ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {
 	0,
 }; // common buffer
 
-char* root_topic = "si4707";
+char* root_topic = MQTT_ROOT_TOPIC;
 char* heartbeat_topic_suffix = "heartbeat";
 
 /* DHCP */
@@ -70,7 +72,7 @@ static uint8_t g_dhcp_get_ip_flag = 0;
 
 /* DNS */
 // TODO:  not currently in use - need to add DNS lookup.  kmo 22 nov 2023 13h12
-static uint8_t g_dns_target_domain[] = "orangepi5.tworock.lan";
+static uint8_t g_dns_target_domain[] = MQTT_BROKER_HOSTNAME;
 static uint8_t g_dns_target_ip[4] = {
 	0,
 };
@@ -106,7 +108,7 @@ int dhcp_wait() {
 	uint8_t retval;
 	
 	
-	/* Infinite loop */
+	/* Infinite loop until success or exceeded retry count */
 	while (1)
 	{
 		/* Assigned IP through DHCP */
@@ -193,7 +195,6 @@ int connect_mqtt() {
 }
 
 int init_mqtt() {
-	puts("mqtt-publisher: init_mqtt()");
 	/* Initialize */
 	int32_t retval;
 	
@@ -203,41 +204,27 @@ int init_mqtt() {
     // kmo 11 nov 2023 12h44
 	stdio_init_all();
 	
-	puts("initializing wiznet SPI");
-	
 	wizchip_spi_initialize();
-
-	puts("initializing wiznet CRIS");
 	wizchip_cris_initialize();
-	
-	puts("resetting wiznet chip");
 	wizchip_reset();
-	puts("initializing wiznet chip");
 	wizchip_initialize();
-	puts("checking wiznet chip");
 	wizchip_check();
 	
 	wizchip_1ms_timer_initialize(repeating_timer_callback);
 	
 	puts("initializing network");
 	
-	if (g_net_info.dhcp == NETINFO_DHCP) // DHCP
+	if (g_net_info.dhcp == NETINFO_DHCP) // get DHCP IP
 	{
-		puts("DHCP init....");
 		wizchip_dhcp_init();
-		puts("DHCP init done.");
 	}
-	else // static
+	else // use static IP
 	{
 		network_initialize(g_net_info);
-	
-		/* Get network information */
 		print_network_information(g_net_info);
 	}
-	
-	puts("init_mqtt calling dhcp_wait");
+
 	dhcp_wait();
-	puts("init_mqtt dhcp_wait finished");
 	
 	NewNetwork(&g_mqtt_network, SOCKET_MQTT);
 	
@@ -258,7 +245,7 @@ int init_mqtt() {
 		return mqtt_retval;
 	}
 	
-    publish_hello_world();
+  publish_hello_world();
 	
 	return 0;
 }
