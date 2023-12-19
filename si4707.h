@@ -4,12 +4,12 @@
 #define SI4707_H
 
 #include "si4707_structs.h"
+#include "hardware/spi.h"
 
 void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response);
 
-// to remove
-void setup_si4707_spi();
-
+void setup_si4707_spi_ez();
+void setup_si4707_spi(spi_inst_t* spi, uint mosi_pin, uint miso_pin, uint sck_pin, uint cs_pin);
 
 // some of this should be private
 void reset_si4707();

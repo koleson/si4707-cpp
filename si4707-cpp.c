@@ -190,7 +190,7 @@ int oneshot() {
 
     reset_si4707();
 
-    setup_si4707_spi();
+    setup_si4707_spi_ez();
 
     power_up_si4707();
     const int cts = await_si4707_cts(500);

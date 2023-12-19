@@ -15,15 +15,18 @@
 
 #define CTS_WAIT 250
 
-// TODO:  parameterize - take in MOSI, MISO, CS, SCK
-void setup_si4707_spi() {
+void setup_si4707_spi_ez() {
+	setup_si4707_spi(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, SI4707_SPI_CS);
+}
+
+void setup_si4707_spi(spi_inst_t* spi, uint mosi_pin, uint miso_pin, uint sck_pin, uint cs_pin) {
 	// SPI initialization. 400kHz.
-	spi_init(SI4707_SPI_PORT, 400*1000);
-	gpio_set_function(SI4707_SPI_MISO, GPIO_FUNC_SPI);
-	gpio_set_function(SI4707_SPI_CS,   GPIO_FUNC_SIO);
-	gpio_set_function(SI4707_SPI_SCK,  GPIO_FUNC_SPI);
-	gpio_set_function(SI4707_SPI_MOSI, GPIO_FUNC_SPI);
-	
+	spi_init(spi, 400*1000);
+	gpio_set_function(mosi_pin, GPIO_FUNC_SPI);
+	gpio_set_function(miso_pin, GPIO_FUNC_SPI);
+	gpio_set_function(sck_pin,  GPIO_FUNC_SPI);
+	gpio_set_function(cs_pin,   GPIO_FUNC_SIO);
+
 	// Chip select is active-low, so we'll initialize it to a driven-high state
 	gpio_set_dir(SI4707_SPI_CS, GPIO_OUT);
 	gpio_put(SI4707_SPI_CS, 1);
@@ -53,7 +56,6 @@ void reset_si4707() {
 	gpio_set_dir(SI4707_RESET, GPIO_OUT);
 	gpio_put(SI4707_RESET, 0);
 	sleep_ms(10);
-	
 	
 	// drive GPO2/INT + GPO1/MISO high to select SPI bus mode on Si4707
 	gpio_init(SI4707_GPO1);
