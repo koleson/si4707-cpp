@@ -266,8 +266,6 @@ int main() {
 
         const bool same_packet_cts = await_si4707_cts(100);
         if (same_packet_cts) {
-            same_params.INTACK = 0;
-            same_params.READADDR = 0;
             get_si4707_same_packet(&same_params, &same_packet);
 
             // TODO:  move all state logic into state_functions
