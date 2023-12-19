@@ -260,16 +260,13 @@ int init_mqtt() {
 	
     publish_hello_world();
 	
-	puts("mqtt-publisher:  init_mqtt() complete!");
 	return 0;
 }
 
 int publish_hello_world()
 {
-	puts("publish_hello_world()");
-	int mqtt_retval = publish(MQTT_ROOT_TOPIC, MQTT_PUBLISH_PAYLOAD);
-	
-	return mqtt_retval;
+	int publish_retval = publish(MQTT_ROOT_TOPIC, MQTT_PUBLISH_PAYLOAD);
+	return publish_retval;
 }
 
 void update_root_topic(char* new_topic_root) 

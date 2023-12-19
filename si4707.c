@@ -17,7 +17,6 @@
 
 // TODO:  parameterize - take in MOSI, MISO, CS, SCK
 void setup_si4707_spi() {
-	puts("setting up SPI");
 	// SPI initialization. 400kHz.
 	spi_init(SI4707_SPI_PORT, 400*1000);
 	gpio_set_function(SI4707_SPI_MISO, GPIO_FUNC_SPI);
@@ -430,10 +429,9 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
 	}
 
-    printf("same_buf after memcpy loop: '%s'\n", same_buf);
 	// heap-allocated variables exit here
 	full_response->DATA = same_buf;
-    full_response->CONF = conf_buf;
+  full_response->CONF = conf_buf;
 }
 
 void print_si4707_same_status(const struct Si4707_SAME_Status_FullResponse* response) {

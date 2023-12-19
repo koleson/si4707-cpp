@@ -91,8 +91,7 @@ void prepare() {
     // this is also called in mqtt-publisher.c which i find suspect.  kmo 11 nov 2023 13h50
     stdio_init_all();
 
-    puts("\n\n\n========================================================");
-    puts("si4707-cpp: prepare()");
+    puts("si4707-cpp: prepare() ========================================================");
 
     // prep LED GPIO
     gpio_init(PICO_DEFAULT_LED_PIN);
@@ -171,25 +170,18 @@ int oneshot() {
     pico_unique_board_id_t board_id;
     pico_get_unique_board_id(&board_id);
 
-    printf("====== board ID: %llx\n", board_id);
-    printf("===== bytes: %02x %02x [...] %02x %02x ==========\n\n", board_id.id[0], board_id.id[1], board_id.id[6],
-           board_id.id[7]);
-    printf("proposed MAC ending: %02x:%02x\n", board_id.id[5], board_id.id[4]);
+    printf("proposed MAC ending (bytes 5 and 4): %02x:%02x\n", board_id.id[5], board_id.id[4]);
+    printf("board ID bytes: ");
     for (int len = 0; len < 8; len++) {
-        printf("%d: %02X /", len, board_id.id[len]);
+        printf("%d: %02X  ", len, board_id.id[len]);
     }
 
     snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
     update_root_topic(g_board_id_string);
 
-    printf("\n\n\n");
-    // fflush(stdout);
-    puts("initializing MQTT...");
-    puts("sleeping before init_mqtt");
+    printf("\n\n");
     sleep_ms(10);
-    puts("done sleeping before init_mqtt");
     init_mqtt();
-    puts("... done initializing MQTT.");
 
     // resetting to SPI mode requires
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
@@ -216,16 +208,12 @@ int oneshot() {
 int main() {
     oneshot();
 
-    // must `prepare` before trying to print this message.  kmo 9 oct 2023 17h29
-    puts("si4707-cpp: main() after oneshot()");
-
     int main_loops = 0;
     int outer_loops_since_last_heartbeat = 0;
     uint64_t last_heartbeat = 0;
     uint64_t last_DHCP_run = 0;
-
     static uint64_t dhcp_interval = (uint64_t) 60 * (uint64_t) 60 * 1000000; // 60 minutes
-    // static uint64_t dhcp_interval = (uint64_t)20 * (uint64_t)1000000; // 60 seconds
+    
     if (!g_Si4707_booted_successfully) {
         printf("Si4707 did not boot successfully, calling abort()...");
         abort();
@@ -236,7 +224,6 @@ int main() {
 #pragma ide diagnostic ignored "EndlessLoop"        // yes, we know, thanks.
     // superloop
     while (true) {
-        //printf("superloop outer\n\n");
 
         struct Si4707_SAME_Status_Packet same_packet;
         struct Si4707_SAME_Status_Params same_params;
@@ -266,6 +253,7 @@ int main() {
 
         const bool same_packet_cts = await_si4707_cts(100);
         if (same_packet_cts) {
+            same_params.READADDR = 0;
             get_si4707_same_packet(&same_params, &same_packet);
 
             // TODO:  move all state logic into state_functions
@@ -306,7 +294,6 @@ int main() {
             gpio_put(PICO_DEFAULT_LED_PIN, 0);
             main_loops++;
         }
-
 
         busy_wait_ms(10);
         outer_loops_since_last_heartbeat++;
