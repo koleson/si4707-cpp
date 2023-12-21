@@ -176,6 +176,10 @@ int oneshot() {
         printf("%d: %02X  ", len, board_id.id[len]);
     }
 
+    set_final_MAC_bytes(board_id.id[5], board_id.id[4]);
+
+    
+
     snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
     update_root_topic(g_board_id_string);
 

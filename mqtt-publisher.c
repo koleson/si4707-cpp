@@ -100,6 +100,11 @@ static void wizchip_dhcp_conflict(void);
 uint8_t dhcp_retry = 0;
 uint8_t dns_retry = 0;
 
+void set_final_MAC_bytes(uint8_t byte5, uint8_t byte6) {
+	g_net_info.mac[4] = byte5;
+	g_net_info.mac[5] = byte6;
+}
+
 int dhcp_run_wrapper() {
 	return DHCP_run();
 }
