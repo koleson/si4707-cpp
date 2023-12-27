@@ -372,18 +372,19 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 
 	_copy_si4707_status_packet_to_full_response(&first_packet, full_response);
 
-	int whole_responses_needed = _responses_needed(first_packet.MSGLEN);
+	unsigned int whole_responses_needed = _responses_needed(first_packet.MSGLEN);
 
 	// TODO:  malloc size based on MSGLEN.  kmo 18 oct 2023 15h54
 	// MSGLEN can be at most 255, so adding null termination, 256 max length
-	const int alloc_length = 256;
+	const unsigned int alloc_length = 256;
 	uint8_t* same_buf = malloc(sizeof(uint8_t) * alloc_length);
 
-    // TODO: confidence might not actually need to be this big? kmo 4 nov 2023 11h23
-    uint8_t* conf_buf = malloc(sizeof(uint8_t) * alloc_length);
+  // TODO:  confidence might not actually need to be this big? kmo 4 nov 2023 11h23
+	// TODO:  populate this buffer
+  uint8_t* conf_buf = malloc(sizeof(uint8_t) * alloc_length);
 	
 	// auto-null-termination
-	for (int i = 0; i < alloc_length; i++) {
+	for (unsigned int i = 0; i < alloc_length; i++) {
 		same_buf[i] = 0x00;
 	}
 
@@ -416,10 +417,10 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 	// kmo 22 nov 2023 17h13
 	
 	for (int i = 0; i < whole_responses_needed; i++) {
-		const int offset = i * 8;
-		const int chars_remaining = first_packet.MSGLEN - (i * 8);
+		const unsigned int offset = i * 8;
+		const unsigned int chars_remaining = first_packet.MSGLEN - (i * 8);
 		
-		int chars_to_read;
+		unsigned int chars_to_read;
 
         // kmo temp note:  this logic was reversed - was setting chars_to_read = 8 when chars_remaining <8;
         // was setting chars_to_read = chars_remaining when chars_remaining >= 8.
