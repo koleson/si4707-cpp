@@ -1,0 +1,5 @@
+It should go without saying, but I'll say it anyways.
+
+This code is provided AS-IS, WITHOUT WARRANTY IMPLIED OR EXPRESS.
+
+In particular, IT SHOULD NOT BE USED AS THE SOLE OR PRIMARY MEANS OF RECEIVING OR RELAYING LIFESAVING INFORMATION.
