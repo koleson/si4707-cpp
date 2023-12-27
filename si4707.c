@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "si4707.h"
+#include "util.h"
 
 #ifndef MIN
 #define MIN(a, b) ((b)>(a)?(a):(b))
@@ -433,6 +434,13 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 		get_si4707_same_packet(&same_buf_params, &same_buf_packet);
 
 		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
+
+		// confidence data is in reverse order of corresponding SAME data for some reason.
+		// (AN332 page 186) kmo 27 dec 2023 12h05
+
+		// TODO:  un-hold this code once CLRBUF operation is validated
+		// kmo 27 dec 2023 12h14
+		// r_memcpy((conf_buf + offset), same_buf_packet.CONF, chars_to_read);
 	}
 
 	// heap-allocated variables exit here

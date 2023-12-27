@@ -74,6 +74,7 @@ add_executable(si4707-cpp
                 si4707.c
                 si4707_structs.c
                 mqtt-publisher.c
+                util.c
                 )
 
 pico_set_program_name(si4707-cpp "si4707-cpp")
