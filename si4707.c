@@ -169,7 +169,9 @@ void tune_si4707() {
 
 void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     uint8_t cmd_buf[9] = { 0x00 };
-    cmd_buf[0] = SI4707_SPI_SEND_CMD;         // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
+		
+		// SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
+    cmd_buf[0] = SI4707_SPI_SEND_CMD;
     cmd_buf[1] = cmd;
 
     cmd_buf[2] = args->ARG1; cmd_buf[3] = args->ARG2; cmd_buf[4] = args->ARG3; cmd_buf[5] = args->ARG4;
@@ -284,47 +286,47 @@ void print_si4707_rsq()
 
 void get_si4707_same_packet(const struct Si4707_SAME_Status_Params *params,
 							struct Si4707_SAME_Status_Packet *packet) {
-	uint8_t wb_same_resp[16] = { 0x00 };
+  uint8_t wb_same_resp[16] = { 0x00 };
 
-    struct Si4707_Command_Args args;
-    // ARG1:  D1 = CLRBUF; D0 = INTACK
+  struct Si4707_Command_Args args;
+  // ARG1:  D1 = CLRBUF; D0 = INTACK
   args.ARG1 = (params->INTACK ? 0x01 : 0x00) | (params->CLRBUF ? 0x02 : 0x00);
 
-    // ARG2:  READADDR
+  // ARG2:  READADDR
   args.ARG2 = params->READADDR; args.ARG3 = 0x00; args.ARG4 = 0x00; 
 	args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
 
-    send_command(SI4707_CMD_WB_SAME_STATUS, &args);
-	read_resp(wb_same_resp);
-	
-	// byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
-	packet->CTS = 			((wb_same_resp[0] & 0x80) != 0);
-	packet->ERR = 			((wb_same_resp[0] & 0x40) != 0);
-	// empty 0x10, 0x20
-	packet->RSQINT = 		((wb_same_resp[0] & 0x08) != 0);
-	packet->SAMEINT = 		((wb_same_resp[0] & 0x04) != 0);
-	packet->ASQINT = 		((wb_same_resp[0] & 0x02) != 0);
-	packet->STCINT = 		((wb_same_resp[0] & 0x01) != 0);
+  send_command(SI4707_CMD_WB_SAME_STATUS, &args);
+  read_resp(wb_same_resp);
 
-	// byte 1:  -/-/-/-/EOMDET/SOMDET/PREDET/HDRRDY
-	packet->EOMDET =	((wb_same_resp[1] & 0x08) != 0);
-	packet->SOMDET =	((wb_same_resp[1] & 0x04) != 0);
-	packet->PREDET =	((wb_same_resp[1] & 0x02) != 0);
-	packet->HDRRDY =	((wb_same_resp[1] & 0x01) != 0);
+  // byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
+  packet->CTS = ((wb_same_resp[0] & 0x80) != 0);
+  packet->ERR = ((wb_same_resp[0] & 0x40) != 0);
+  // empty 0x10, 0x20
+  packet->RSQINT = 	((wb_same_resp[0] & 0x08) != 0);
+  packet->SAMEINT = ((wb_same_resp[0] & 0x04) != 0);
+  packet->ASQINT = 	((wb_same_resp[0] & 0x02) != 0);
+  packet->STCINT = 	((wb_same_resp[0] & 0x01) != 0);
 
-	packet->STATE = 	wb_same_resp[2];
-    // printf("get_si4707_same_packet: wb_same_resp[3] = %d\n", wb_same_resp[3]);
-	packet->MSGLEN = 	wb_same_resp[3];
-	
-	// copy strings (not null-terminated, fixed-length)
-	memcpy(packet->CONF, wb_same_resp+4, 2);
-	memcpy(packet->DATA, wb_same_resp+6, 8);
+  // byte 1:  -/-/-/-/EOMDET/SOMDET/PREDET/HDRRDY
+  packet->EOMDET = ((wb_same_resp[1] & 0x08) != 0);
+  packet->SOMDET = ((wb_same_resp[1] & 0x04) != 0);
+  packet->PREDET = ((wb_same_resp[1] & 0x02) != 0);
+  packet->HDRRDY = ((wb_same_resp[1] & 0x01) != 0);
+
+  packet->STATE = wb_same_resp[2];
+  // printf("get_si4707_same_packet: wb_same_resp[3] = %d\n", wb_same_resp[3]);
+  packet->MSGLEN = wb_same_resp[3];
+
+  // copy strings (not null-terminated, fixed-length)
+  memcpy(packet->CONF, wb_same_resp + 4, 2);
+  memcpy(packet->DATA, wb_same_resp + 6, 8);
 }
 
 void _copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_Status_Packet * status_packet, struct Si4707_SAME_Status_FullResponse * full_response) {
 	// byte 0
-	full_response->CTS = 		status_packet->CTS;
-	full_response->ERR =		status_packet->ERR;
+	full_response->CTS = 			status_packet->CTS;
+	full_response->ERR =			status_packet->ERR;
 	full_response->RSQINT =		status_packet->RSQINT;
 	full_response->SAMEINT = 	status_packet->SAMEINT;
 	full_response->ASQINT =		status_packet->ASQINT;
