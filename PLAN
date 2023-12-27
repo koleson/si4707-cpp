@@ -16,6 +16,7 @@ bugs:
 - none at the moment!
 
 short-term:
+- move mqtt secrets, etc. to uncommitted settings override header similar to Tasmota's
 - include git commit hash (and clean/dirty status) in binary/MQTT messages
 - include confidence data in MQTT output (IN PROGRESS)
 
