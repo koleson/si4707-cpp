@@ -390,8 +390,11 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 
 	struct Si4707_SAME_Status_Params same_buf_params;
 	struct Si4707_SAME_Status_Packet same_buf_packet;
-	printf("si4707.c: get_si4707_same_status: INTACK = %u / CLRBUF = %u\n", 
-		params->INTACK, params->CLRBUF);
+	if (params->INTACK || params->CLRBUF) {
+		printf("si4707.c: get_si4707_same_status: INTACK = %u / CLRBUF = %u\n", 
+			params->INTACK, params->CLRBUF);
+	}
+	
 	same_buf_params.INTACK = params->INTACK;
 	same_buf_params.CLRBUF = params->CLRBUF;
 	same_buf_params.READADDR = 0;
@@ -457,8 +460,7 @@ void print_si4707_same_status(const struct Si4707_SAME_Status_FullResponse* resp
 				response->EOMDET, response->SOMDET, response->PREDET, 
 				response->HDRRDY, response->STATE, response->MSGLEN);
 
-	printf("Current SAME MSGLEN: %d\n", response->MSGLEN);
-	printf("Current SAME DATA: '%s'\n", response->DATA);
+	printf("SAME DATA: '%s'\n", response->DATA);
 }
 
 void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
