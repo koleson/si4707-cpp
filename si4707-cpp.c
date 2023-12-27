@@ -12,6 +12,8 @@
 #include "si4707.h"
 #include "mqtt-publisher.h"
 
+#define STATE_PRINT_INTERVAL 10
+
 typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT } System_State;
 System_State system_state = IDLE;
 
@@ -27,7 +29,7 @@ void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
     }
     
     gs_consecutive_idle_handler_executions++;
-    if (gs_consecutive_idle_handler_executions % 5 == 0) {
+    if (gs_consecutive_idle_handler_executions % STATE_PRINT_INTERVAL == 0) {
         printf("i");
     }
 };
@@ -265,13 +267,6 @@ int main() {
             set_heartbeat_interval_for_SAME_state(same_packet.STATE);
         }
 
-
-        if (outer_loops_since_last_heartbeat % 5 == 0) {
-            printf(".");
-            //printf("outerloop %d\n", outer_loops_since_last_heartbeat);
-        }
-
-
         const uint64_t now = time_us_64();
         const uint64_t microseconds_since_last_heartbeat = now - last_heartbeat;
 
@@ -299,7 +294,7 @@ int main() {
             main_loops++;
         }
 
-        busy_wait_ms(10);
+        busy_wait_ms(5);
         outer_loops_since_last_heartbeat++;
     }
 #pragma clang diagnostic pop
