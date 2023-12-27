@@ -385,7 +385,7 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 
 	struct Si4707_SAME_Status_Params same_buf_params;
 	struct Si4707_SAME_Status_Packet same_buf_packet;
-	printf("si4707.c: get_si4707_same_status: INTACK = %u", params->INTACK);
+	printf("si4707.c: get_si4707_same_status: INTACK = %u\n", params->INTACK);
 	same_buf_params.INTACK = params->INTACK;
 	same_buf_params.READADDR = 0;
 
