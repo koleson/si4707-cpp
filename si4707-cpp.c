@@ -64,12 +64,12 @@ void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
     // (or getting it directly, but in general prefer testability of passing in time)
     uint64_t now = time_us_64();
     if (now - gs_first_EOM_timestamp_us > 5000000) {
-        // TODO:  reset interrupts, etc.
         printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===");
         // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
         // otherwise you will fly through all the various states unendingly.
         // kmo 6 dec 2023 18h43
         reset_SAME_interrupts_and_buffer_on_next_status_check = true;
+        system_state = IDLE;
     }  
     printf("e");
 };
