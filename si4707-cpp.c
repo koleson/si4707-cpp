@@ -21,7 +21,7 @@ static uint64_t gs_consecutive_idle_handler_executions = 0;
 
 void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
     if (status->PREDET == 1) {
-        printf("\n\n=== ZCZC - RECEIVING MESSAGE ===");
+        printf("\n\n=== ZCZC - RECEIVING MESSAGE ===\n");
         system_state = RECEIVING_HEADER;
         gs_consecutive_idle_handler_executions = 0;
     }
@@ -34,7 +34,7 @@ void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
 
 void receiving_header_handler(const struct Si4707_SAME_Status_Packet *status) {
     if (status->HDRRDY == 1) {
-        printf("\n\n=== SAME HEADER RECEIVED AND READY ===");
+        printf("\n\n=== SAME HEADER RECEIVED AND READY ===\n");
         system_state = HEADER_READY;
     }
     printf("r");
@@ -45,7 +45,7 @@ void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
     // kmo 6 dec 2023 18h34
 
     if (status->EOMDET == 1) {
-        printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===");
+        printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===\n");
         gs_first_EOM_timestamp_us = time_us_64();
         system_state = EOM_WAIT;
 
@@ -64,7 +64,7 @@ void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
     // (or getting it directly, but in general prefer testability of passing in time)
     uint64_t now = time_us_64();
     if (now - gs_first_EOM_timestamp_us > 5000000) {
-        printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===");
+        printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===\n");
         // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
         // otherwise you will fly through all the various states unendingly.
         // kmo 6 dec 2023 18h43
@@ -149,14 +149,14 @@ void set_heartbeat_interval_for_SAME_state(const int same_state) {
     // kmo 6 dec 2023 15h31
     if (same_state == SI4707_SAME_STATE_END_OF_MESSAGE) {
         if (g_current_heartbeat_interval < 10000000) {
-            printf("\n\nSAME state 0 - reducing heartbeat interval to 10 seconds");
+            printf("\n\nSAME state 0 - reducing heartbeat interval to 10 seconds\n");
             g_current_heartbeat_interval = 10000000;
         }
     } else {
         // TODO:  reduce this even further - say, 0.2 or 0.1 seconds.  kmo 22 nov 2023 11h35
         if (g_current_heartbeat_interval > 500000) {
             // 0.5 seconds
-            printf("\n\nSAME state > 0 (%d) - reducing heartbeat interval to 0.5 seconds", same_state);
+            printf("\n\nSAME state > 0 (%d) - reducing heartbeat interval to 0.5 seconds\n", same_state);
 
 
             g_current_heartbeat_interval = 500000;
