@@ -359,7 +359,7 @@ int _responses_needed(int msglen) {
 		responses_needed = whole_responses_needed;
 	}
 
-	printf("%d responses needed to get message of length %d\n", responses_needed, msglen);
+	// printf("%d responses needed to get message of length %d\n", responses_needed, msglen);
 
 	return responses_needed;
 }
@@ -423,8 +423,8 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
         // was setting chars_to_read = chars_remaining when chars_remaining >= 8.
         // kmo 29 nov 2023 11h18
 		if (chars_remaining < 8) {
-            printf("only reading %d chars in last copy\n", chars_remaining);
-            printf("same_buf before final memcpy: '%s'\n", same_buf);
+            // printf("only reading %d chars in last copy\n", chars_remaining);
+            // printf("same_buf before final memcpy: '%s'\n", same_buf);
 			chars_to_read = chars_remaining;
 		} else {
 			chars_to_read = 8;
