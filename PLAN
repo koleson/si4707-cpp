@@ -1,10 +1,6 @@
-bugs:
-- number of messages needed to get message seems to be off-by-one for 60 char messages (IN PROGRESS)
-
-short-term:
-- include git commit hash (and clean/dirty status) in binary/MQTT messages
-- clear SAME message buffer and interrupts (IN PROGRESS)
-  - need to determine appropriate timing/state indications here
+recently completed:
+- 12/27:  si4707.c: validated number of requests needed for a given MSGLEN 
+- 12/27:  si4707-cpp.c:  clear SAME message buffer and interrupts after EOM (and some time.)
   - EOMDET = 1 at end of audio broadcast following activation
   - STATE flips between 0 and 1 several times - once for each EOM marker (NNNN)
     - each preamble/EOM marker takes a bit less than 0.4 seconds to transmit
@@ -16,14 +12,19 @@ short-term:
     - if 3 seconds has elapsed from first EOM, and state == 0, reset interrupts and clear SAME buffer
       - send end-of-message MQTT output prior to resetting
 
-- include confidence data in MQTT output
+bugs:
+- none at the moment!
+
+short-term:
+- include git commit hash (and clean/dirty status) in binary/MQTT messages
+- include confidence data in MQTT output (IN PROGRESS)
 
 long-term:
 - allow tuning arbitrary frequency (within allowed) via MQTT message
 - allow resetting device via MQTT message
 - si4707:  allocate SAME buffers based on MSGLEN
 - si4707:  ASQ (alert tone) status mechanisms
-- add DNS lookup of mqtt broker hostname
-- emit MQTT of SAME state on SAME state changes rather than fixed interval
+- mqtt-publisher: add DNS lookup of mqtt broker hostname
+- si4707-cpp.c / mqtt-publisher.c: emit MQTT of SAME state on SAME state changes rather than fixed interval
   - need to store and have convenience comparison of SAME state
   - OR:  use a state machine (IN PROGRESS)
