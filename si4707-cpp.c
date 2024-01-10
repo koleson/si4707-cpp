@@ -26,6 +26,8 @@ void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
         printf("\n\n=== ZCZC - RECEIVING MESSAGE ===\n");
         system_state = RECEIVING_HEADER;
         gs_consecutive_idle_handler_executions = 0;
+        printf("system_state: moving to state RECEIVING_HEADER\n");
+        return;
     }
     
     gs_consecutive_idle_handler_executions++;
@@ -38,6 +40,8 @@ void receiving_header_handler(const struct Si4707_SAME_Status_Packet *status) {
     if (status->HDRRDY == 1) {
         printf("\n\n=== SAME HEADER RECEIVED AND READY ===\n");
         system_state = HEADER_READY;
+        printf("system_state: moving to state HEADER_READY\n");
+        return;
     }
     printf("r");
 };
@@ -50,7 +54,8 @@ void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
         printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===\n");
         gs_first_EOM_timestamp_us = time_us_64();
         system_state = EOM_WAIT;
-
+        printf("system_state: moving to state EOM_WAIT");
+        return;
     }
     printf("h");
 };
@@ -72,6 +77,8 @@ void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
         // kmo 6 dec 2023 18h43
         reset_SAME_interrupts_and_buffer_on_next_status_check = true;
         system_state = IDLE;
+        printf("system_state: moving to state IDLE");
+        return;
     }  
     printf("e");
 };
