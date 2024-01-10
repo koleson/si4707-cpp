@@ -14,6 +14,11 @@
 
 #define STATE_PRINT_INTERVAL 10
 
+// forward declarations
+void reset_SAME_interrupts_and_buffer();
+// end forward declarations
+
+
 typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT } System_State;
 System_State system_state = IDLE;
 
