@@ -65,7 +65,7 @@ void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
     // TODO:  implementing this correctly requires passing in timing information
     // (or getting it directly, but in general prefer testability of passing in time)
     uint64_t now = time_us_64();
-    if (now - gs_first_EOM_timestamp_us > 5000000) {
+    if (now - gs_first_EOM_timestamp_us > 8000000) {
         printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===\n");
         // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
         // otherwise you will fly through all the various states unendingly.
