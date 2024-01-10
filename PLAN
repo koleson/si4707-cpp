@@ -21,6 +21,8 @@ short-term:
 - include confidence data in MQTT output (IN PROGRESS)
 
 long-term:
+- watchdog timer for receive / alert / broadcast / state
+  - 5 minutes, for example, seems reasonable for most situations
 - allow tuning arbitrary frequency (within allowed) via MQTT message
 - allow resetting device via MQTT message
 - si4707:  allocate SAME buffers based on MSGLEN
