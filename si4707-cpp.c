@@ -273,8 +273,8 @@ int main() {
         struct Si4707_SAME_Status_Packet same_packet;
         struct Si4707_SAME_Status_Params same_params;
 
-            same_params.CLRBUF = false;
-            same_params.INTACK = false;
+        same_params.CLRBUF = false;
+        same_params.INTACK = false;
         
         struct Si4707_RSQ_Status rsq_status;
         uint8_t status = 0;
