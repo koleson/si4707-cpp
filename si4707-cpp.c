@@ -18,7 +18,6 @@ typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EO
 System_State system_state = IDLE;
 
 static uint64_t gs_first_EOM_timestamp_us = 0;
-static bool reset_SAME_interrupts_and_buffer_on_next_status_check = false;
 static uint64_t gs_consecutive_idle_handler_executions = 0;
 
 void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
@@ -75,7 +74,7 @@ void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
         // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
         // otherwise you will fly through all the various states unendingly.
         // kmo 6 dec 2023 18h43
-        reset_SAME_interrupts_and_buffer_on_next_status_check = true;
+        reset_SAME_interrupts_and_buffer();
         system_state = IDLE;
         printf("system_state: moving to state IDLE");
         return;
@@ -173,6 +172,38 @@ void set_heartbeat_interval_for_SAME_state(const int same_state) {
     }
 }
 
+// FIXME:  this method is formatted weirdly.  need to update
+// vscode formatting rules.  kmo 10 jan 2024 11h19
+void reset_SAME_interrupts_and_buffer() {
+  struct Si4707_SAME_Status_Packet same_packet;
+  struct Si4707_SAME_Status_Params same_params;
+
+  same_params.CLRBUF = true;
+  same_params.INTACK = true;
+
+  struct Si4707_RSQ_Status rsq_status;
+  uint8_t status = 0;
+
+  const bool rsq_cts = await_si4707_cts(100);
+  if (rsq_cts) 
+  {
+    status = read_status();
+    get_si4707_rsq(&rsq_status);
+  } 
+  else 
+  {
+    puts("RSQ/SAME status CTS timed out :(");
+  }
+
+  const bool same_packet_cts = await_si4707_cts(100);
+  if (same_packet_cts) 
+  {
+    same_params.READADDR = 0;
+    get_si4707_same_packet(&same_params, &same_packet);
+    // we do nothing with the result.
+  }
+}
+
 int oneshot() {
     prepare();
 
@@ -235,23 +266,15 @@ int main() {
     
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"        // yes, we know, thanks.
+    
     // superloop
     while (true) {
 
         struct Si4707_SAME_Status_Packet same_packet;
         struct Si4707_SAME_Status_Params same_params;
 
-        if (reset_SAME_interrupts_and_buffer_on_next_status_check) 
-        {
-            reset_SAME_interrupts_and_buffer_on_next_status_check = false;
-            same_params.CLRBUF = true;
-            same_params.INTACK = true;
-        } 
-        else 
-        {
             same_params.CLRBUF = false;
             same_params.INTACK = false;
-        }
         
         struct Si4707_RSQ_Status rsq_status;
         uint8_t status = 0;
