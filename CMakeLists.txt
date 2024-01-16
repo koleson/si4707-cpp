@@ -69,12 +69,14 @@ add_subdirectory(${PORT_DIR})
 
 # Add executable. Default name is the project name, version 0.1
 
+file(GLOB MAIN_SOURCES src/main/*.c)
+file(GLOB MAIN_HEADERS src/main/*.h)
+file(GLOB SI4707_SOURCES src/si4707/*.c)
+file(GLOB SI4707_HEADERS src/si4707/*.h)
+
 add_executable(si4707-cpp 
-                si4707-cpp.c
-                si4707.c
-                si4707_structs.c
-                mqtt-publisher.c
-                util.c
+                ${MAIN_SOURCES}
+                ${SI4707_SOURCES}
                 )
 
 pico_set_program_name(si4707-cpp "si4707-cpp")
@@ -91,6 +93,8 @@ target_link_libraries(si4707-cpp
 
 # Add the standard include files to the build
 target_include_directories(si4707-cpp PRIVATE
+  src/si4707
+  src/main
   ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
 )
@@ -101,7 +105,7 @@ target_link_libraries(si4707-cpp
         hardware_i2c
         hardware_timer
         hardware_clocks
-	pico_unique_id
+	    pico_unique_id
         ETHERNET_FILES
         IOLIBRARY_FILES
         MQTT_FILES
