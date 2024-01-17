@@ -5,6 +5,7 @@
 
 #include "si4707_const.h"
 
+#include "si4707_hal.h"
 // TODO:  move to HAL
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
@@ -19,7 +20,13 @@
 #define CTS_WAIT 250
 
 
+struct Si4707_HAL_FPs* current_hal = NULL;
+void si4707_set_hal(struct Si4707_HAL_FPs* hal) {
+	current_hal = hal;
+}
+
 // TODO:  struct instead?
+// TODO:  move all to HAL
 spi_inst_t* g_spi = NULL;
 uint g_mosi_pin = 0;
 uint g_miso_pin = 0;
@@ -69,17 +76,27 @@ void setup_si4707_spi() {
 }
 
 static inline void si4707_cs_select() {
-	assert_pinmap_set();
-	asm volatile("nop \n nop \n nop");
-	gpio_put(g_cs_pin, 0);  // Active low
-	asm volatile("nop \n nop \n nop");
+	if (current_hal) 
+	{
+		current_hal->cs_select();
+  } 
+	else 
+	{
+    printf("SET HAL BEFORE USING si4707!\n");
+		abort();
+  }
 }
 
 static inline void si4707_cs_deselect() {
-	assert_pinmap_set();
-	asm volatile("nop \n nop \n nop");
-	gpio_put(g_cs_pin, 1);
-	asm volatile("nop \n nop \n nop");
+  if (current_hal) 
+	{
+    current_hal->cs_deselect();
+  } 
+	else 
+	{
+    printf("SET HAL BEFORE USING si4707!\n");
+		abort();
+  }
 }
 
 // end SPI base stuff

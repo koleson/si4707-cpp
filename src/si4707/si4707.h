@@ -5,6 +5,9 @@
 
 #include "si4707_structs.h"
 #include "hardware/spi.h"
+#include "si4707_hal.h"
+
+void si4707_set_hal(struct Si4707_HAL_FPs* hal);
 
 void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response);
 

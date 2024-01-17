@@ -12,6 +12,11 @@
 #include "si4707.h"
 #include "mqtt-publisher.h"
 
+#include "si4707_hal.h"
+
+// TODO:  conditionalize HAL inclusion based on target info
+#include "si4707_hal_rp2040.h"
+
 #define STATE_PRINT_INTERVAL 10
 
 // forward declarations
@@ -236,6 +241,14 @@ int oneshot() {
     printf("\n\n");
     sleep_ms(10);
     init_mqtt();
+
+    // setup HAL
+    // TODO:  conditionalize based on target mcu
+    hal_rp2040_set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
+                        SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
+    struct Si4707_HAL_FPs* hal = hal_rp2040_FPs();
+
+    si4707_set_hal(hal);
 
     // resetting to SPI mode requires
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
