@@ -197,7 +197,7 @@ void reset_SAME_interrupts_and_buffer() {
   const bool rsq_cts = si4707_await_cts(100);
   if (rsq_cts) 
   {
-    status = read_status();
+    status = si4707_read_status();
     si4707_get_rsq(&rsq_status);
   } 
   else 
@@ -303,7 +303,7 @@ int main() {
 
         const bool rsq_cts = si4707_await_cts(100);
         if (rsq_cts) {
-            status = read_status();
+            status = si4707_read_status();
             si4707_get_rsq(&rsq_status);
         } else {
             puts("RSQ/SAME status CTS timed out :(");

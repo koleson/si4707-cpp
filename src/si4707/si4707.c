@@ -110,13 +110,12 @@ void si4707_reset() {
 }
 
 bool si4707_await_cts(const int maxWait) {
-	assert_pinmap_set();
-	//puts("waiting for cts");
+	assert_HAL_set();
 	
 	int i = 0;
 	char status = 0;
 	while ((status & 0x80) == 0x00 && i < maxWait) {
-		status = si4707_read_status();
+		status = current_hal->read_status();
 		
 		// only print status if it's taking a long time
 		if (i > 0 && i % 200 == 0) {
@@ -134,8 +133,6 @@ bool si4707_await_cts(const int maxWait) {
 		printf("cts wait-loop timed out (%d patience)\n", maxWait);
 		return false;
 	}
-
-	//printf("cts wait-loop exit status: %d\n\n", status);
 }
 
 void si4707_power_up() {
