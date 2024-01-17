@@ -73,10 +73,16 @@ file(GLOB MAIN_SOURCES src/main/*.c)
 file(GLOB MAIN_HEADERS src/main/*.h)
 file(GLOB SI4707_SOURCES src/si4707/*.c)
 file(GLOB SI4707_HEADERS src/si4707/*.h)
+file(GLOB SI4707_TEST_SOURCES src/test/si4707_driver_test.c)
 
 add_executable(si4707-cpp 
                 ${MAIN_SOURCES}
                 ${SI4707_SOURCES}
+                )
+
+add_executable(si4707_test_driver
+                ${SI4707_SOURCES}
+                ${SI4707_TEST_SOURCES}
                 )
 
 pico_set_program_name(si4707-cpp "si4707-cpp")
@@ -84,12 +90,6 @@ pico_set_program_version(si4707-cpp "0.1")
 
 pico_enable_stdio_uart(si4707-cpp 1)
 pico_enable_stdio_usb(si4707-cpp 0)
-
-# Add the standard library to the build
-target_link_libraries(si4707-cpp
-        pico_stdlib
-        hardware_spi
-        hardware_dma)
 
 # Add the standard include files to the build
 target_include_directories(si4707-cpp PRIVATE
@@ -99,12 +99,13 @@ target_include_directories(si4707-cpp PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
 )
 
-# Add any user requested libraries
 target_link_libraries(si4707-cpp 
+        pico_stdlib
         hardware_spi
         hardware_i2c
         hardware_timer
         hardware_clocks
+        hardware_dma
 	    pico_unique_id
         ETHERNET_FILES
         IOLIBRARY_FILES
@@ -114,7 +115,18 @@ target_link_libraries(si4707-cpp
         TIMER_FILES
         )
 
+target_include_directories(si4707_test_driver PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/..
+
+)
+
+target_link_libraries(si4707_test_driver
+        pico_stdlib
+        hardware_spi)
+
 pico_add_extra_outputs(si4707-cpp)
+pico_add_extra_outputs(si4707_test_driver)
 
 # Set compile options
 add_compile_options(

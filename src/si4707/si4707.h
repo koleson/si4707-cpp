@@ -8,8 +8,10 @@
 
 void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response);
 
-void setup_si4707_spi_ez();
-void setup_si4707_spi(spi_inst_t* spi, uint mosi_pin, uint miso_pin, uint sck_pin, uint cs_pin);
+void set_si4707_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
+                       uint sck_pin, uint cs_pin, uint rst_pin, uint gpio1_pin,
+                       uint gpio2_pin);
+void setup_si4707_spi();
 
 // some of this should be private
 void reset_si4707();

@@ -209,6 +209,11 @@ void reset_SAME_interrupts_and_buffer() {
   }
 }
 
+void set_si4707_pinmap_ez() {
+	set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
+                        SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
+}
+
 int oneshot() {
     prepare();
 
@@ -236,10 +241,9 @@ int oneshot() {
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
     // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
     // reset_si4707 ends.  it seems easiest to drive it momentarily to make sure.
-
+    set_si4707_pinmap_ez();
     reset_si4707();
-
-    setup_si4707_spi_ez();
+    setup_si4707_spi();
 
     power_up_si4707();
     const int cts = await_si4707_cts(500);

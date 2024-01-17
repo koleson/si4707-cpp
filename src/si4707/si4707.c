@@ -4,9 +4,11 @@
 #include <stdlib.h>
 
 #include "si4707_const.h"
-#include "hardware.h"
+
+// TODO:  move to HAL
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
+
 #include "si4707.h"
 #include "util.h"
 
@@ -16,34 +18,67 @@
 
 #define CTS_WAIT 250
 
-void setup_si4707_spi_ez() {
-	setup_si4707_spi(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, SI4707_SPI_CS);
+
+// TODO:  struct instead?
+spi_inst_t* g_spi = NULL;
+uint g_mosi_pin = 0;
+uint g_miso_pin = 0;
+uint g_sck_pin = 0;
+uint g_cs_pin = 0;
+uint g_reset_pin = 0;
+uint g_gpo1_pin = 0;
+uint g_gpo2_pin = 0;
+
+bool g_pinmap_set = false;
+
+void set_si4707_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
+                       uint sck_pin, uint cs_pin, uint rst_pin, uint gpio1_pin,
+                       uint gpio2_pin) {
+	g_mosi_pin = mosi_pin;
+	g_miso_pin = miso_pin;
+	g_sck_pin = sck_pin;
+  g_cs_pin = cs_pin;
+  g_reset_pin = rst_pin;
+  g_gpo1_pin = gpio1_pin;
+  g_gpo2_pin = gpio2_pin;
+  g_spi = spi;
+
+	g_pinmap_set = true;
 }
 
-void setup_si4707_spi(spi_inst_t* spi, uint mosi_pin, uint miso_pin, uint sck_pin, uint cs_pin) {
-	// SPI initialization. 400kHz.
-	spi_init(spi, 400*1000);
-	gpio_set_function(mosi_pin, GPIO_FUNC_SPI);
-	gpio_set_function(miso_pin, GPIO_FUNC_SPI);
-	gpio_set_function(sck_pin,  GPIO_FUNC_SPI);
-	gpio_set_function(cs_pin,   GPIO_FUNC_SIO);
-
-	// Chip select is active-low, so we'll initialize it to a driven-high state
-	gpio_set_dir(SI4707_SPI_CS, GPIO_OUT);
-	gpio_put(SI4707_SPI_CS, 1);
+void assert_pinmap_set() {
+	if (!g_pinmap_set) {
+    printf("WARNING:  pinmap not set for Si4707 but you're trying to use it\n");
+		return;
+  }
 }
 
+void setup_si4707_spi() {
+  assert_pinmap_set();
 
+  // SPI initialization. 400kHz.
+  spi_init(g_spi, 400 * 1000);
+  gpio_set_function(g_mosi_pin, GPIO_FUNC_SPI);
+  gpio_set_function(g_miso_pin, GPIO_FUNC_SPI);
+  gpio_set_function(g_sck_pin, GPIO_FUNC_SPI);
+  gpio_set_function(g_cs_pin, GPIO_FUNC_SIO);
+
+  // Chip select is active-low, so we'll initialize it to a driven-high state
+  gpio_set_dir(g_cs_pin, GPIO_OUT);
+  gpio_put(g_cs_pin, 1);
+}
 
 static inline void si4707_cs_select() {
+	assert_pinmap_set();
 	asm volatile("nop \n nop \n nop");
-	gpio_put(SI4707_SPI_CS, 0);  // Active low
+	gpio_put(g_cs_pin, 0);  // Active low
 	asm volatile("nop \n nop \n nop");
 }
 
 static inline void si4707_cs_deselect() {
+	assert_pinmap_set();
 	asm volatile("nop \n nop \n nop");
-	gpio_put(SI4707_SPI_CS, 1);
+	gpio_put(g_cs_pin, 1);
 	asm volatile("nop \n nop \n nop");
 }
 
@@ -51,42 +86,44 @@ static inline void si4707_cs_deselect() {
 
 
 void reset_si4707() {
+	assert_pinmap_set();
 	puts("resetting Si4707");
 	
-	gpio_init(SI4707_RESET);
-	gpio_set_dir(SI4707_RESET, GPIO_OUT);
-	gpio_put(SI4707_RESET, 0);
+	gpio_init(g_reset_pin);
+	gpio_set_dir(g_reset_pin, GPIO_OUT);
+	gpio_put(g_reset_pin, 0);
 	sleep_ms(10);
 	
 	// drive GPO2/INT + GPO1/MISO high to select SPI bus mode on Si4707
-	gpio_init(SI4707_GPO1);
-	gpio_set_dir(SI4707_GPO1, GPIO_OUT);
-	gpio_put(SI4707_GPO1, 1);
+	gpio_init(g_gpo1_pin);
+	gpio_set_dir(g_gpo1_pin, GPIO_OUT);
+	gpio_put(g_gpo1_pin, 1);
 	
 	// GPO1 = MISO - we can use it before SPI is set up
-	gpio_init(SI4707_GPO2);
-	gpio_set_dir(SI4707_GPO2, GPIO_OUT);
-	gpio_put(SI4707_GPO2, 1);
+	gpio_init(g_gpo2_pin);
+	gpio_set_dir(g_gpo2_pin, GPIO_OUT);
+	gpio_put(g_gpo2_pin, 1);
 	
 	sleep_ms(5);
 	
-	gpio_put(SI4707_RESET, 1);
+	gpio_put(g_reset_pin, 1);
 	sleep_ms(5);
 	
-	gpio_put(SI4707_GPO1, 0);
-	gpio_put(SI4707_GPO2, 0);
+	gpio_put(g_gpo1_pin, 0);
+	gpio_put(g_gpo2_pin, 0);
 	sleep_ms(2);
 	
 	// GPO could be used as INT later
-	gpio_deinit(SI4707_GPO1);
+	gpio_deinit(g_gpo1_pin);
 	// GPO1 is used as MISO later
-	gpio_deinit(SI4707_GPO2);
+	gpio_deinit(g_gpo2_pin);
 	sleep_ms(2);
 	
 	puts("done resetting Si4707");
 }
 
 bool await_si4707_cts(const int maxWait) {
+	assert_pinmap_set();
 	//puts("waiting for cts");
 	
 	int i = 0;
@@ -134,7 +171,7 @@ void power_up_si4707() {
 	
 	si4707_cs_select();
 	// write 9 bytes - control + cmd + 7 args
-	spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
+	spi_write_blocking(g_spi, cmd, 9);
 	si4707_cs_deselect();
 	
 	await_si4707_cts(CTS_WAIT); 
@@ -157,7 +194,7 @@ void tune_si4707() {
 	const bool cts = await_si4707_cts(CTS_WAIT);
 	if (cts) {
 		si4707_cs_select();
-		spi_write_blocking(SI4707_SPI_PORT, cmd, 9);
+		spi_write_blocking(g_spi, cmd, 9);
 		si4707_cs_deselect();
 	} else {
 		puts("could not tune - CTS timeout");
@@ -179,7 +216,7 @@ void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
 
     si4707_cs_select();
-    spi_write_blocking(SI4707_SPI_PORT, cmd_buf, 9);
+    spi_write_blocking(g_spi, cmd_buf, 9);
     si4707_cs_deselect();
 
     const bool cts = await_si4707_cts(CTS_WAIT);
@@ -206,8 +243,8 @@ uint8_t read_status() {
 	uint8_t status_result[1] = { 0x00 };
 	
 	si4707_cs_select();
-	spi_write_blocking(SI4707_SPI_PORT, status_cmd, 1);
-	spi_read_blocking(SI4707_SPI_PORT, 0, status_result, 1);
+	spi_write_blocking(g_spi, status_cmd, 1);
+	spi_read_blocking(g_spi, 0, status_result, 1);
 	si4707_cs_deselect();
 	
 	return status_result[0];
@@ -221,8 +258,8 @@ void read_resp(uint8_t* resp) {
 	const bool cts = await_si4707_cts(CTS_WAIT);
 	if (cts) {
 		si4707_cs_select();
-		spi_write_blocking(SI4707_SPI_PORT, resp_cmd, 1);
-		spi_read_blocking(SI4707_SPI_PORT, 0, resp, 16);
+		spi_write_blocking(g_spi, resp_cmd, 1);
+		spi_read_blocking(g_spi, 0, resp, 16);
 		si4707_cs_deselect();
 	} else {
 		puts("could not read response - CTS timeout");
