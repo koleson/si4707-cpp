@@ -74,10 +74,12 @@ file(GLOB MAIN_HEADERS src/main/*.h)
 file(GLOB SI4707_SOURCES src/si4707/*.c)
 file(GLOB SI4707_HEADERS src/si4707/*.h)
 file(GLOB SI4707_TEST_SOURCES src/test/si4707_driver_test.c)
+file(GLOB SI4707_HAL_SOURCES src/hal/*.c)
 
 add_executable(si4707-cpp 
                 ${MAIN_SOURCES}
                 ${SI4707_SOURCES}
+                ${SI4707_HAL_SOURCES}
                 )
 
 add_executable(si4707_test_driver
@@ -95,6 +97,7 @@ pico_enable_stdio_usb(si4707-cpp 0)
 target_include_directories(si4707-cpp PRIVATE
   src/si4707
   src/main
+  src/hal
   ${CMAKE_CURRENT_LIST_DIR}
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
 )
@@ -118,7 +121,8 @@ target_link_libraries(si4707-cpp
 target_include_directories(si4707_test_driver PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/..
-
+    src/si4707
+    src/hal
 )
 
 target_link_libraries(si4707_test_driver

@@ -38,7 +38,7 @@ uint g_gpo2_pin = 0;
 
 bool g_pinmap_set = false;
 
-void set_si4707_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
+void si4707_set_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
                        uint sck_pin, uint cs_pin, uint rst_pin, uint gpio1_pin,
                        uint gpio2_pin) {
 	g_mosi_pin = mosi_pin;
@@ -54,92 +54,62 @@ void set_si4707_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
 }
 
 void assert_pinmap_set() {
-	if (!g_pinmap_set) {
+	if (!g_pinmap_set) 
+	{
     printf("WARNING:  pinmap not set for Si4707 but you're trying to use it\n");
 		return;
   }
 }
 
-void setup_si4707_spi() {
-  assert_pinmap_set();
+void assert_HAL_set() {
+	// TODO:  can probably cache HAL validity
+	// then invalidate when calling si4707_set_hal();
+	// but i don't think this is terribly slow anyways.
+	// kmo 17 jan 2024 13h35
 
-  // SPI initialization. 400kHz.
-  spi_init(g_spi, 400 * 1000);
-  gpio_set_function(g_mosi_pin, GPIO_FUNC_SPI);
-  gpio_set_function(g_miso_pin, GPIO_FUNC_SPI);
-  gpio_set_function(g_sck_pin, GPIO_FUNC_SPI);
-  gpio_set_function(g_cs_pin, GPIO_FUNC_SIO);
+	if (!current_hal)
+	{
+		printf("SET HAL BEFORE USING Si4707!\n");
+		abort();
+	}
 
-  // Chip select is active-low, so we'll initialize it to a driven-high state
-  gpio_set_dir(g_cs_pin, GPIO_OUT);
-  gpio_put(g_cs_pin, 1);
+	// TODO:  also check that all expected FPs are set
+	if (current_hal->setup_spi == NULL
+			|| current_hal->cs_select == NULL
+			|| current_hal->cs_deselect == NULL
+			|| current_hal->reset == NULL
+			|| current_hal->read_status == NULL
+			)
+	{
+		printf("selected Si4707 HAL does not implement all expected methods.\n");
+		abort();
+	}
+}
+
+void si4707_setup_spi() {
+	assert_HAL_set();
+	current_hal->setup_spi();
 }
 
 static inline void si4707_cs_select() {
-	if (current_hal) 
-	{
-		current_hal->cs_select();
-  } 
-	else 
-	{
-    printf("SET HAL BEFORE USING si4707!\n");
-		abort();
-  }
+	assert_HAL_set();
+	current_hal->cs_select();
 }
 
 static inline void si4707_cs_deselect() {
-  if (current_hal) 
-	{
-    current_hal->cs_deselect();
-  } 
-	else 
-	{
-    printf("SET HAL BEFORE USING si4707!\n");
-		abort();
-  }
+  assert_HAL_set();
+	current_hal->cs_deselect();
 }
 
 // end SPI base stuff
 
-
-void reset_si4707() {
-	assert_pinmap_set();
-	puts("resetting Si4707");
-	
-	gpio_init(g_reset_pin);
-	gpio_set_dir(g_reset_pin, GPIO_OUT);
-	gpio_put(g_reset_pin, 0);
-	sleep_ms(10);
-	
-	// drive GPO2/INT + GPO1/MISO high to select SPI bus mode on Si4707
-	gpio_init(g_gpo1_pin);
-	gpio_set_dir(g_gpo1_pin, GPIO_OUT);
-	gpio_put(g_gpo1_pin, 1);
-	
-	// GPO1 = MISO - we can use it before SPI is set up
-	gpio_init(g_gpo2_pin);
-	gpio_set_dir(g_gpo2_pin, GPIO_OUT);
-	gpio_put(g_gpo2_pin, 1);
-	
-	sleep_ms(5);
-	
-	gpio_put(g_reset_pin, 1);
-	sleep_ms(5);
-	
-	gpio_put(g_gpo1_pin, 0);
-	gpio_put(g_gpo2_pin, 0);
-	sleep_ms(2);
-	
-	// GPO could be used as INT later
-	gpio_deinit(g_gpo1_pin);
-	// GPO1 is used as MISO later
-	gpio_deinit(g_gpo2_pin);
-	sleep_ms(2);
-	
+void si4707_reset() {
+	assert_HAL_set();
+	current_hal->setup_spi();
 	puts("done resetting Si4707");
 }
 
-bool await_si4707_cts(const int maxWait) {
+bool si4707_await_cts(const int maxWait) {
 	assert_pinmap_set();
 	//puts("waiting for cts");
 	
@@ -168,8 +138,8 @@ bool await_si4707_cts(const int maxWait) {
 	//printf("cts wait-loop exit status: %d\n\n", status);
 }
 
-void power_up_si4707() {
-	puts("power_up_si4707");
+void si4707_power_up() {
+	puts("si4707_power_up");
 	// si4707 startup command buffer
 	uint8_t cmd[9] = { 0x00 };
 	cmd[0] = SI4707_SPI_SEND_CMD;       // write a command (drives 8 bytes on SDIO)
@@ -191,12 +161,12 @@ void power_up_si4707() {
 	spi_write_blocking(g_spi, cmd, 9);
 	si4707_cs_deselect();
 	
-	await_si4707_cts(CTS_WAIT); 
+	si4707_await_cts(CTS_WAIT); 
 	
 	sleep_ms(10);
 }
 
-void tune_si4707() {
+void si4707_tune() {
 	puts("tuning si4707 to 162.475MHz");
 	const uint8_t freqHigh = 0xFD;
 	const uint8_t freqLow = 0xDE;
@@ -208,7 +178,7 @@ void tune_si4707() {
 	cmd[3] = freqHigh;
 	cmd[4] = freqLow;
 	
-	const bool cts = await_si4707_cts(CTS_WAIT);
+	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
 		si4707_cs_select();
 		spi_write_blocking(g_spi, cmd, 9);
@@ -236,10 +206,10 @@ void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     spi_write_blocking(g_spi, cmd_buf, 9);
     si4707_cs_deselect();
 
-    const bool cts = await_si4707_cts(CTS_WAIT);
+    const bool cts = si4707_await_cts(CTS_WAIT);
     if (cts) {
         uint8_t resp_buf[16] = { 0x00 };
-        read_resp(resp_buf);
+        si4707_read_resp(resp_buf);
     } else {
         printf("could not send command %02x - CTS timeout\n", cmd);
     }
@@ -254,7 +224,9 @@ void send_command_noargs(const uint8_t cmd) {
 }
 
 uint8_t read_status() {
-	const uint8_t status_cmd[1] = { 0xA0 }; // read status byte via GPO1
+	assert_HAL_set();
+	return current_hal->read_status();
+	/* const uint8_t status_cmd[1] = { 0xA0 }; // read status byte via GPO1
 	
 	// buffer:  receive power up status to this buffer
 	uint8_t status_result[1] = { 0x00 };
@@ -264,15 +236,15 @@ uint8_t read_status() {
 	spi_read_blocking(g_spi, 0, status_result, 1);
 	si4707_cs_deselect();
 	
-	return status_result[0];
+	return status_result[0]; */
 }
 
-void read_resp(uint8_t* resp) {
+void si4707_read_resp(uint8_t* resp) {
 	uint8_t resp_cmd[1];
 	resp_cmd[0] = 0xE0;        // read 16 response bytes via GPO1
 	
 
-	const bool cts = await_si4707_cts(CTS_WAIT);
+	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
 		si4707_cs_select();
 		spi_write_blocking(g_spi, resp_cmd, 1);
@@ -283,10 +255,10 @@ void read_resp(uint8_t* resp) {
 	}
 }
 
-void get_si4707_rev() {
+void si4707_get_rev() {
 	uint8_t product_data[16] = { 0x00 };
 	
-	const bool cts_cmd = await_si4707_cts(CTS_WAIT);
+	const bool cts_cmd = si4707_await_cts(CTS_WAIT);
 	if (cts_cmd) {
 		send_command_noargs(SI4707_CMD_GET_REV);
 	} else {
@@ -294,9 +266,9 @@ void get_si4707_rev() {
 		return;
 	}
 	
-	const bool cts_read = await_si4707_cts(CTS_WAIT);
+	const bool cts_read = si4707_await_cts(CTS_WAIT);
 	if (cts_read) {
-		read_resp(product_data);
+		si4707_read_resp(product_data);
 		
 		const uint8_t pn = product_data[1];
 		// printf("product number: %d\n", pn);
@@ -318,11 +290,11 @@ void get_si4707_rev() {
 	}
 }
 
-void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
+void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
 	send_command_noargs(SI4707_CMD_WB_RSQ_STATUS);
 
-	read_resp(wb_rsq_resp);
+	si4707_read_resp(wb_rsq_resp);
 	const uint8_t valid = wb_rsq_resp[2] & 0x01;
 	const uint8_t rssi = wb_rsq_resp[4];
 	const uint8_t snr = wb_rsq_resp[5];
@@ -331,15 +303,15 @@ void get_si4707_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	rsq_status->ASNR = snr;
 }
 
-void print_si4707_rsq() 
+void si4707_print_rsq() 
 {
 	struct Si4707_RSQ_Status status;
-	get_si4707_rsq(&status);
+	si4707_get_rsq(&status);
 	puts("RSSI  SNR");
 	printf("%4d  %3d\n\n", status.RSSI, status.ASNR);
 }
 
-void get_si4707_same_packet(const struct Si4707_SAME_Status_Params *params,
+void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
 							struct Si4707_SAME_Status_Packet *packet) {
   uint8_t wb_same_resp[16] = { 0x00 };
 
@@ -352,7 +324,7 @@ void get_si4707_same_packet(const struct Si4707_SAME_Status_Params *params,
 	args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
 
   send_command(SI4707_CMD_WB_SAME_STATUS, &args);
-  read_resp(wb_same_resp);
+  si4707_read_resp(wb_same_resp);
 
   // byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
   packet->CTS = ((wb_same_resp[0] & 0x80) != 0);
@@ -370,7 +342,7 @@ void get_si4707_same_packet(const struct Si4707_SAME_Status_Params *params,
   packet->HDRRDY = ((wb_same_resp[1] & 0x01) != 0);
 
   packet->STATE = wb_same_resp[2];
-  // printf("get_si4707_same_packet: wb_same_resp[3] = %d\n", wb_same_resp[3]);
+  // printf("si4707_get_same_packet: wb_same_resp[3] = %d\n", wb_same_resp[3]);
   packet->MSGLEN = wb_same_resp[3];
 
   // copy strings (not null-terminated, fixed-length)
@@ -395,7 +367,7 @@ void _copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_Status
 
 	full_response->STATE  = 	status_packet->STATE;
 	full_response->MSGLEN = 	status_packet->MSGLEN;
-    // printf("get_si4707_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
+    // printf("si4707_get_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
 }
 
 int _responses_needed(int msglen) {
@@ -418,11 +390,11 @@ int _responses_needed(int msglen) {
 	return responses_needed;
 }
 
-void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
+void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
 {
 	struct Si4707_SAME_Status_Packet first_packet;
 
-	get_si4707_same_packet(params, &first_packet);
+	si4707_get_same_packet(params, &first_packet);
 
 	_copy_si4707_status_packet_to_full_response(&first_packet, full_response);
 
@@ -445,7 +417,7 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 	struct Si4707_SAME_Status_Params same_buf_params;
 	struct Si4707_SAME_Status_Packet same_buf_packet;
 	if (params->INTACK || params->CLRBUF) {
-		printf("si4707.c: get_si4707_same_status: INTACK = %u / CLRBUF = %u\n", 
+		printf("si4707.c: si4707_get_same_status: INTACK = %u / CLRBUF = %u\n", 
 			params->INTACK, params->CLRBUF);
 	}
 	
@@ -491,7 +463,7 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
 		}
 
 		same_buf_params.READADDR = offset;
-		get_si4707_same_packet(&same_buf_params, &same_buf_packet);
+		si4707_get_same_packet(&same_buf_params, &same_buf_packet);
 
 		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
 
@@ -508,7 +480,7 @@ void get_si4707_same_status(const struct Si4707_SAME_Status_Params *params, stru
   full_response->CONF = conf_buf;
 }
 
-void print_si4707_same_status(const struct Si4707_SAME_Status_FullResponse* response) {
+void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* response) {
 	puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
 	printf("%6d %6d %6d %6d %5d %6d\n", 
 				response->EOMDET, response->SOMDET, response->PREDET, 
@@ -517,7 +489,7 @@ void print_si4707_same_status(const struct Si4707_SAME_Status_FullResponse* resp
 	printf("SAME DATA: '%s'\n", response->DATA);
 }
 
-void free_Si4707_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
+void si4707_free_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
 	// printf("freeing full response %p\n", response);
 
     if (response->DATA != NULL) {

@@ -143,22 +143,22 @@ void construct_and_publish_heartbeat(int main_loops, const struct Si4707_RSQ_Sta
 
 void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *same_params) {
     struct Si4707_SAME_Status_FullResponse same_status;
-    const bool same_cts = await_si4707_cts(100);
+    const bool same_cts = si4707_await_cts(100);
     if (same_cts) {
         if (same_params->CLRBUF) {
             puts("get_and_publish_full_SAME_status:  clearing buffer");
         }
-        get_si4707_same_status(same_params, &same_status);
+        si4707_get_same_status(same_params, &same_status);
     } else {
         puts("SAME status CTS timed out :(");
     }
 
     //printf("printing SAME status\n");
-    print_si4707_same_status(&same_status);
+    si4707_print_same_status(&same_status);
     //printf("publishing SAME status\n");
     publish_SAME_status(&same_status);
 
-    free_Si4707_SAME_Status_FullResponse(&same_status);
+    si4707_free_SAME_Status_FullResponse(&same_status);
 }
 
 void set_heartbeat_interval_for_SAME_state(const int same_state) {
@@ -194,28 +194,28 @@ void reset_SAME_interrupts_and_buffer() {
   struct Si4707_RSQ_Status rsq_status;
   uint8_t status = 0;
 
-  const bool rsq_cts = await_si4707_cts(100);
+  const bool rsq_cts = si4707_await_cts(100);
   if (rsq_cts) 
   {
     status = read_status();
-    get_si4707_rsq(&rsq_status);
+    si4707_get_rsq(&rsq_status);
   } 
   else 
   {
     puts("RSQ/SAME status CTS timed out :(");
   }
 
-  const bool same_packet_cts = await_si4707_cts(100);
+  const bool same_packet_cts = si4707_await_cts(100);
   if (same_packet_cts) 
   {
     same_params.READADDR = 0;
-    get_si4707_same_packet(&same_params, &same_packet);
+    si4707_get_same_packet(&same_params, &same_packet);
     // we do nothing with the result.
   }
 }
 
 void set_si4707_pinmap_ez() {
-	set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
+	si4707_set_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
                         SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
 }
 
@@ -253,17 +253,17 @@ int oneshot() {
     // resetting to SPI mode requires
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
     // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
-    // reset_si4707 ends.  it seems easiest to drive it momentarily to make sure.
+    // si4707_reset ends.  it seems easiest to drive it momentarily to make sure.
     set_si4707_pinmap_ez();
-    reset_si4707();
-    setup_si4707_spi();
+    si4707_reset();
+    si4707_setup_spi();
 
-    power_up_si4707();
-    const int cts = await_si4707_cts(500);
+    si4707_power_up();
+    const int cts = si4707_await_cts(500);
     if (cts) {
         puts("si4707 CTS - getting rev and tuning");
-        get_si4707_rev();
-        tune_si4707();
+        si4707_get_rev();
+        si4707_tune();
 
         g_Si4707_booted_successfully = true;
     } else {
@@ -301,18 +301,18 @@ int main() {
         struct Si4707_RSQ_Status rsq_status;
         uint8_t status = 0;
 
-        const bool rsq_cts = await_si4707_cts(100);
+        const bool rsq_cts = si4707_await_cts(100);
         if (rsq_cts) {
             status = read_status();
-            get_si4707_rsq(&rsq_status);
+            si4707_get_rsq(&rsq_status);
         } else {
             puts("RSQ/SAME status CTS timed out :(");
         }
 
-        const bool same_packet_cts = await_si4707_cts(100);
+        const bool same_packet_cts = si4707_await_cts(100);
         if (same_packet_cts) {
             same_params.READADDR = 0;
-            get_si4707_same_packet(&same_params, &same_packet);
+            si4707_get_same_packet(&same_params, &same_packet);
 
             // TODO:  move all state logic into state_functions
             state_functions[system_state](&same_packet);
@@ -327,7 +327,7 @@ int main() {
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             printf("\n ====== heartbeating ======================================\n");
 
-            print_si4707_rsq();
+            si4707_print_rsq();
 
             if (!(status & 0x01)) {
                 puts("tune invalid :(");
