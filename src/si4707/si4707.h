@@ -19,7 +19,7 @@ void si4707_setup_spi();
 // some of this should be private
 void si4707_reset();
 bool si4707_await_cts(int maxWait);
-uint8_t read_status();
+uint8_t si4707_read_status();
 void si4707_read_resp(uint8_t* resp);
 void si4707_power_up();
 void si4707_get_rev();

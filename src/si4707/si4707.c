@@ -116,7 +116,7 @@ bool si4707_await_cts(const int maxWait) {
 	int i = 0;
 	char status = 0;
 	while ((status & 0x80) == 0x00 && i < maxWait) {
-		status = read_status();
+		status = si4707_read_status();
 		
 		// only print status if it's taking a long time
 		if (i > 0 && i % 200 == 0) {
@@ -223,7 +223,7 @@ void send_command_noargs(const uint8_t cmd) {
     send_command(cmd, &args);
 }
 
-uint8_t read_status() {
+uint8_t si4707_read_status() {
 	assert_HAL_set();
 	return current_hal->read_status();
 	/* const uint8_t status_cmd[1] = { 0xA0 }; // read status byte via GPO1
