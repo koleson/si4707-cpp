@@ -469,6 +469,8 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
 
 		// TODO:  un-hold this code once CLRBUF operation is validated
 		// kmo 27 dec 2023 12h14
+		// TODO:  okay holding this again for HAL changes
+		// kmo 17 jan 2024 15h15
 		// r_memcpy((conf_buf + offset), same_buf_packet.CONF, chars_to_read);
 	}
 
