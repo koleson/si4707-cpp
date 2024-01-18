@@ -225,6 +225,9 @@ void si4707_send_command_noargs(const uint8_t cmd) {
     si4707_send_command(cmd, &args);
 }
 
+// NOTE:  DO NOT try to replace this with read_resp, as that requires CTS
+// and therefore causes recursion/stack overflow
+// kmo 17 jan 2024 16h26
 uint8_t si4707_read_status() {
 	assert_HAL_set();
 	const uint8_t status_cmd[1] = { SI4707_SPI_READ1_GPO1 }; // read status byte via GPO1
