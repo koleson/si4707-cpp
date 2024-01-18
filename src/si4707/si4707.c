@@ -105,7 +105,7 @@ static inline void si4707_cs_deselect() {
 
 void si4707_reset() {
 	assert_HAL_set();
-	current_hal->setup_spi();
+	current_hal->reset();
 	puts("done resetting Si4707");
 }
 
