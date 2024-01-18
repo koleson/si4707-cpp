@@ -224,8 +224,7 @@ void send_command_noargs(const uint8_t cmd) {
 
 uint8_t si4707_read_status() {
 	assert_HAL_set();
-	return current_hal->read_status();
-	/* const uint8_t status_cmd[1] = { 0xA0 }; // read status byte via GPO1
+	const uint8_t status_cmd[1] = { SI4707_SPI_READ1_GPO1 }; // read status byte via GPO1
 	
 	// buffer:  receive power up status to this buffer
 	uint8_t status_result[1] = { 0x00 };
@@ -240,8 +239,7 @@ uint8_t si4707_read_status() {
 
 void si4707_read_resp(uint8_t* resp) {
 	uint8_t resp_cmd[1];
-	resp_cmd[0] = 0xE0;        // read 16 response bytes via GPO1
-	
+	resp_cmd[0] = SI4707_SPI_READ16_GPO1;        // read 16 response bytes via GPO1
 
 	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
