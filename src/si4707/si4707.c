@@ -204,7 +204,11 @@ void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* ar
     cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
 
 		current_hal->txn_start();
+		// FIXME: HAL_WRITE_CTS_READ
 		// FIXME: HAL
+		// TODO:  probably this should be waiting for CTS
+		// TODO:  therefore, CTS_WAIT should be defined 
+		//        at the driver level.
     spi_write_blocking(g_spi, cmd_buf, 9);
     current_hal->txn_end();
 
@@ -236,6 +240,7 @@ uint8_t si4707_read_status() {
 	uint8_t status_result[1] = { 0x00 };
 	
 	si4707_txn_start();
+	// FIXME:  HAL_WRITE_NOCTS_READ
 	// FIXME: HAL
 	spi_write_blocking(g_spi, status_cmd, 1);
 	// FIXME:  HAL
@@ -258,6 +263,7 @@ void si4707_read_resp(int length, uint8_t* resp) {
 	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
 		si4707_txn_start();
+		// FIXME:  HAL_WRITE_NOCTS_READ
 		// FIXME: HAL
 		spi_write_blocking(g_spi, resp_cmd, 1);
 		// FIXME: HAL
@@ -481,7 +487,7 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
 
 		// TODO:  un-hold this code once CLRBUF operation is validated
 		// kmo 27 dec 2023 12h14
-		// TODO:  okay holding this again for HAL changes
+		// TODO:  okay, holding this again for HAL changes
 		// kmo 17 jan 2024 15h15
 		// r_memcpy((conf_buf + offset), same_buf_packet.CONF, chars_to_read);
 	}
