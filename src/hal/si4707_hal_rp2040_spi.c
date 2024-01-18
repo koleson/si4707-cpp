@@ -6,7 +6,9 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 
+#include "si4707_const.h"
 #include "si4707_hal.h"
+#include "si4707.h"
 
 spi_inst_t* g_hal_rp2040_spi = NULL;
 uint g_hal_rp2040_mosi_pin = 0;
@@ -35,7 +37,8 @@ void hal_rp2040_set_si4707_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
 	g_hal_rp2040_pinmap_set = true;
 }
 
-void hal_rp2040_assert_pinmap_set() {
+void hal_rp2040_assert_pinmap_set() 
+{
 	if (!g_hal_rp2040_pinmap_set) {
     printf("RP2040 HAL:  pinmap not set for Si4707 but you're trying to use it\n");
 		abort();
@@ -115,6 +118,38 @@ void hal_rp2040_si4707_reset()
 	// GPO1 is used as MISO later
 	gpio_deinit(g_hal_rp2040_gpo2_pin);
 	sleep_ms(2);
+}
+
+void si4707_hal_rpi2040_spi_send_command_and_read_response(const bool wait_for_cts_command, const uint8_t cmd, const struct Si4707_Command_Args* args, 
+                                          const bool wait_for_cts_response, const uint8_t resp_length, uint8_t* resp_buf)
+{
+  // note to self:  unclear whether i should use the 
+  // HAL version or the driver version.  kmo 17 jan 2024
+  // si4707_txn_start();
+  hal_rp2040_si4707_txn_start();
+  
+  if (wait_for_cts_command) {
+    si4707_await_cts(CTS_WAIT);
+  }
+
+  uint8_t cmd_buf[9] = { 0x00 };
+  cmd_buf[0] = cmd;
+  cmd_buf[1] = args->ARG1; cmd_buf[2] = args->ARG2; cmd_buf[3] = args->ARG3;
+  cmd_buf[4] = args->ARG4; cmd_buf[5] = args->ARG5; cmd_buf[6] = args->ARG6;
+  cmd_buf[7] = args->ARG7;
+
+  // TODO:  i cannot remember why this is 9 instead of 8 length
+  // kmo 17 jan 2024 20h50
+  spi_write_blocking(g_hal_rp2040_spi, cmd_buf, 9);
+
+  if (wait_for_cts_response) {
+    si4707_await_cts(CTS_WAIT);
+  }
+
+  spi_read_blocking(g_hal_rp2040_spi, 0, resp_buf, resp_length);
+
+  hal_rp2040_si4707_txn_end();
+
 }
 
 struct Si4707_HAL_FPs* hal_rp2040_FPs() 
