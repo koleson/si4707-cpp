@@ -283,15 +283,7 @@ void si4707_get_rev() {
 		
 		if (pn != 7) {
 			printf("product number invalid - halting\n\n");
-
-            // halt
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
-			// ReSharper disable once CppDFAEndlessLoop
-			while (true) {
-				busy_wait_ms(100000);
-			}
-#pragma clang diagnostic pop
+			abort();
 		}
 	} else {
 		puts("could not read product info - CTS timeout");
