@@ -20,7 +20,7 @@ void si4707_setup_spi();
 void si4707_reset();
 bool si4707_await_cts(int maxWait);
 uint8_t si4707_read_status();
-void si4707_read_resp(uint8_t* resp);
+void si4707_read_resp_16(uint8_t* resp);
 void si4707_power_up();
 void si4707_get_rev();
 void si4707_tune();

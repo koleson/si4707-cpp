@@ -114,7 +114,7 @@ bool si4707_await_cts(const int maxWait) {
 	int i = 0;
 	char status = 0;
 	while ((status & 0x80) == 0x00 && i < maxWait) {
-		status = current_hal->read_status();
+		status = si4707_read_status();
 		
 		// only print status if it's taking a long time
 		if (i > 0 && i % 200 == 0) {
@@ -191,7 +191,7 @@ void si4707_tune() {
 	// kmo 10 oct 2023 21h54
 }
 
-void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
+void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     uint8_t cmd_buf[9] = { 0x00 };
 		
 		// SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
@@ -214,12 +214,12 @@ void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     }
 }
 
-void send_command_noargs(const uint8_t cmd) {
+void si4707_send_command_noargs(const uint8_t cmd) {
 	struct Si4707_Command_Args args;
     args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
     args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
 
-    send_command(cmd, &args);
+    si4707_send_command(cmd, &args);
 }
 
 uint8_t si4707_read_status() {
@@ -229,15 +229,23 @@ uint8_t si4707_read_status() {
 	// buffer:  receive power up status to this buffer
 	uint8_t status_result[1] = { 0x00 };
 	
-	si4707_cs_select();
+	si4707_txn_start();
+	// FIXME: HAL
 	spi_write_blocking(g_spi, status_cmd, 1);
+	// FIXME:  HAL
 	spi_read_blocking(g_spi, 0, status_result, 1);
-	si4707_cs_deselect();
+	si4707_txn_end();
 	
-	return status_result[0]; */
+	return status_result[0];
 }
 
-void si4707_read_resp(uint8_t* resp) {
+// TODO:  i think this is SPI-specific because
+// the command is sent in a separate method.
+// on I2C, i think it will look quite different.
+// kmo 17 jan 2024 16h32
+void si4707_read_resp(int length, uint8_t* resp) {
+	// TODO:  this is SPI-specific.  
+	// FIXME:  HAL
 	uint8_t resp_cmd[1];
 	resp_cmd[0] = SI4707_SPI_READ16_GPO1;        // read 16 response bytes via GPO1
 
@@ -251,12 +259,16 @@ void si4707_read_resp(uint8_t* resp) {
 	}
 }
 
+void si4707_read_resp_16(uint8_t* resp) {
+	si4707_read_resp(16, resp);
+}
+
 void si4707_get_rev() {
 	uint8_t product_data[16] = { 0x00 };
 	
 	const bool cts_cmd = si4707_await_cts(CTS_WAIT);
 	if (cts_cmd) {
-		send_command_noargs(SI4707_CMD_GET_REV);
+		si4707_send_command_noargs(SI4707_CMD_GET_REV);
 	} else {
 		puts("could not request product info - CTS timeout");
 		return;
@@ -264,7 +276,7 @@ void si4707_get_rev() {
 	
 	const bool cts_read = si4707_await_cts(CTS_WAIT);
 	if (cts_read) {
-		si4707_read_resp(product_data);
+		si4707_read_resp(2, product_data);
 		
 		const uint8_t pn = product_data[1];
 		// printf("product number: %d\n", pn);
@@ -288,9 +300,9 @@ void si4707_get_rev() {
 
 void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
-	send_command_noargs(SI4707_CMD_WB_RSQ_STATUS);
+	si4707_send_command_noargs(SI4707_CMD_WB_RSQ_STATUS);
 
-	si4707_read_resp(wb_rsq_resp);
+	si4707_read_resp_16(wb_rsq_resp);
 	const uint8_t valid = wb_rsq_resp[2] & 0x01;
 	const uint8_t rssi = wb_rsq_resp[4];
 	const uint8_t snr = wb_rsq_resp[5];
@@ -319,8 +331,8 @@ void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
   args.ARG2 = params->READADDR; args.ARG3 = 0x00; args.ARG4 = 0x00; 
 	args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
 
-  send_command(SI4707_CMD_WB_SAME_STATUS, &args);
-  si4707_read_resp(wb_same_resp);
+  si4707_send_command(SI4707_CMD_WB_SAME_STATUS, &args);
+  si4707_read_resp_16(wb_same_resp);
 
   // byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
   packet->CTS = ((wb_same_resp[0] & 0x80) != 0);
