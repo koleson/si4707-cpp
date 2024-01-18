@@ -14,8 +14,8 @@ struct Si4707_HAL_FPs {
   void (*txn_end)();
   void (*reset)();
   void (*power_up)();
-  void (*tune)();
   void (*send_command)(const uint8_t cmd, const struct Si4707_Command_Args* args);
+
 };
 
 #endif // SI4707_HAL_H
