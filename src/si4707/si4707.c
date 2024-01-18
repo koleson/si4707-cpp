@@ -260,6 +260,8 @@ void si4707_read_resp(int length, uint8_t* resp) {
 		si4707_txn_start();
 		// FIXME: HAL
 		spi_write_blocking(g_spi, resp_cmd, 1);
+		// FIXME: HAL
+		spi_read_blocking(g_spi, 0, resp, length);
 		si4707_txn_end();
 	} else {
 		puts("could not read response - CTS timeout");
