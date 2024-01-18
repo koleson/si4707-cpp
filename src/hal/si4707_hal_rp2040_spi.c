@@ -60,7 +60,7 @@ void hal_rp2040_setup_si4707_spi() {
   gpio_put(g_hal_rp2040_cs_pin, 1);
 }
 
-void hal_rp2040_si4707_cs_select() 
+void hal_rp2040_si4707_txn_start() 
 {
   hal_rp2040_assert_pinmap_set();
   asm volatile("nop \n nop \n nop");
@@ -68,7 +68,7 @@ void hal_rp2040_si4707_cs_select()
 	asm volatile("nop \n nop \n nop");
 }
 
-void hal_rp2040_si4707_cs_deselect() 
+void hal_rp2040_si4707_txn_end() 
 {
   hal_rp2040_assert_pinmap_set();
 	asm volatile("nop \n nop \n nop");
@@ -76,6 +76,10 @@ void hal_rp2040_si4707_cs_deselect()
 	asm volatile("nop \n nop \n nop");
 }
 
+// TODO:  a lot of this could be extracted if we just
+// add some GPIO methods.  the sleeps should be common code.
+// (then again sleep is platform-specific.)
+// kmo 17 jan 2024
 void hal_rp2040_si4707_reset()
 {
   hal_rp2040_assert_pinmap_set();
@@ -112,14 +116,8 @@ void hal_rp2040_si4707_reset()
 	sleep_ms(2);
 }
 
+// TODO:  delete, replace with cmd/response
 /*
-void hal_rp2040_si4707_await_cts()
-{
-  hal_rp2040_assert_pinmap_set();
-  // TODO:  need to implement read_status first
-}
-*/
-
 uint8_t hal_rp2040_si4707_read_status()
 {
   const uint8_t status_cmd[1] = { 0xA0 }; // read status byte via GPO1
@@ -127,21 +125,23 @@ uint8_t hal_rp2040_si4707_read_status()
 	// buffer:  receive power up status to this buffer
 	uint8_t status_result[1] = { 0x00 };
 
-  hal_rp2040_si4707_cs_select();
+  hal_rp2040_si4707_txn_start();
   spi_write_blocking(g_hal_rp2040_spi, status_cmd, 1);
   spi_read_blocking(g_hal_rp2040_spi, 0, status_result, 1);
-  hal_rp2040_si4707_cs_deselect();
+  hal_rp2040_si4707_txn_end();
 
   return status_result[0];
 }
+*/
+
 
 struct Si4707_HAL_FPs* hal_rp2040_FPs() 
 {
   struct Si4707_HAL_FPs* function_pointers = (struct Si4707_HAL_FPs*)malloc(sizeof(struct Si4707_HAL_FPs));
-  function_pointers->cs_select = hal_rp2040_si4707_cs_select;
-  function_pointers->cs_deselect = hal_rp2040_si4707_cs_deselect;
-  function_pointers->setup_spi = hal_rp2040_setup_si4707_spi;
+  function_pointers->txn_start = hal_rp2040_si4707_txn_start;
+  function_pointers->txn_end = hal_rp2040_si4707_txn_end;
+  function_pointers->prepare_interface = hal_rp2040_setup_si4707_spi;
   function_pointers->reset = hal_rp2040_si4707_reset;
-  function_pointers->read_status = hal_rp2040_si4707_read_status;
+  //function_pointers->read_status = hal_rp2040_si4707_read_status;
   return function_pointers;
 }
