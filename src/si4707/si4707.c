@@ -211,7 +211,7 @@ void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* ar
     const bool cts = si4707_await_cts(CTS_WAIT);
     if (cts) {
         uint8_t resp_buf[16] = { 0x00 };
-        si4707_read_resp(resp_buf);
+        si4707_read_resp_16(resp_buf);
     } else {
         printf("could not send command %02x - CTS timeout\n", cmd);
     }
