@@ -156,6 +156,7 @@ void si4707_power_up() {
 	si4707_txn_start();
 
 	// write 9 bytes - control + cmd + 7 args
+	// FIXME: HAL
 	spi_write_blocking(g_spi, cmd, 9);
 	
 	si4707_txn_end();
@@ -180,6 +181,7 @@ void si4707_tune() {
 	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
 		si4707_txn_start();
+		// FIXME: HAL
 		spi_write_blocking(g_spi, cmd, 9);
 		si4707_txn_end();
 	} else {
@@ -202,6 +204,7 @@ void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* ar
     cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
 
 		current_hal->txn_start();
+		// FIXME: HAL
     spi_write_blocking(g_spi, cmd_buf, 9);
     current_hal->txn_end();
 
@@ -252,6 +255,7 @@ void si4707_read_resp(int length, uint8_t* resp) {
 	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
 		si4707_txn_start();
+		// FIXME: HAL
 		spi_write_blocking(g_spi, resp_cmd, 1);
 		si4707_txn_end();
 	} else {
