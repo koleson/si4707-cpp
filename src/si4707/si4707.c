@@ -74,11 +74,10 @@ void assert_HAL_set() {
 	}
 
 	// TODO:  also check that all expected FPs are set
-	if (current_hal->setup_spi == NULL
-			|| current_hal->cs_select == NULL
-			|| current_hal->cs_deselect == NULL
+	if (current_hal->prepare_interface == NULL
+			|| current_hal->txn_start == NULL
+			|| current_hal->txn_end == NULL
 			|| current_hal->reset == NULL
-			|| current_hal->read_status == NULL
 			)
 	{
 		printf("selected Si4707 HAL does not implement all expected methods.\n");
@@ -88,17 +87,17 @@ void assert_HAL_set() {
 
 void si4707_setup_spi() {
 	assert_HAL_set();
-	current_hal->setup_spi();
+	current_hal->prepare_interface();
 }
 
-static inline void si4707_cs_select() {
+static inline void si4707_txn_start() {
 	assert_HAL_set();
-	current_hal->cs_select();
+	current_hal->txn_start();
 }
 
-static inline void si4707_cs_deselect() {
+static inline void si4707_txn_end() {
   assert_HAL_set();
-	current_hal->cs_deselect();
+	current_hal->txn_end();
 }
 
 // end SPI base stuff
@@ -153,10 +152,13 @@ void si4707_power_up() {
 	// 0x05:  analog output mode
 	cmd[3] = 0x05;
 	
-	si4707_cs_select();
+	puts("si4707_power_up: txn about to start\n");
+	si4707_txn_start();
+
 	// write 9 bytes - control + cmd + 7 args
 	spi_write_blocking(g_spi, cmd, 9);
-	si4707_cs_deselect();
+	
+	si4707_txn_end();
 	
 	si4707_await_cts(CTS_WAIT); 
 	
@@ -177,9 +179,9 @@ void si4707_tune() {
 	
 	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
-		si4707_cs_select();
+		si4707_txn_start();
 		spi_write_blocking(g_spi, cmd, 9);
-		si4707_cs_deselect();
+		si4707_txn_end();
 	} else {
 		puts("could not tune - CTS timeout");
 	}
@@ -199,9 +201,9 @@ void send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
     cmd_buf[2] = args->ARG1; cmd_buf[3] = args->ARG2; cmd_buf[4] = args->ARG3; cmd_buf[5] = args->ARG4;
     cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
 
-    si4707_cs_select();
+		current_hal->txn_start();
     spi_write_blocking(g_spi, cmd_buf, 9);
-    si4707_cs_deselect();
+    current_hal->txn_end();
 
     const bool cts = si4707_await_cts(CTS_WAIT);
     if (cts) {
@@ -243,10 +245,9 @@ void si4707_read_resp(uint8_t* resp) {
 
 	const bool cts = si4707_await_cts(CTS_WAIT);
 	if (cts) {
-		si4707_cs_select();
+		si4707_txn_start();
 		spi_write_blocking(g_spi, resp_cmd, 1);
-		spi_read_blocking(g_spi, 0, resp, 16);
-		si4707_cs_deselect();
+		si4707_txn_end();
 	} else {
 		puts("could not read response - CTS timeout");
 	}

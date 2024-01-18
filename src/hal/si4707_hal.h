@@ -4,10 +4,14 @@
 #include <stdint.h>
 #include "si4707_structs.h"
 
+// HAL Assumptions:
+// - should work with SPI or I2C
+// - on i2c, select/deselect (successors start/end) will be no-ops
+
 struct Si4707_HAL_FPs {
-  void (*setup_spi)();
-  void (*cs_select)();
-  void (*cs_deselect)();
+  void (*prepare_interface)();
+  void (*txn_start)();
+  void (*txn_end)();
   void (*reset)();
   void (*power_up)();
   void (*tune)();
