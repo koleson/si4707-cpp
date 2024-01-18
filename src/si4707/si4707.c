@@ -489,19 +489,15 @@ void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* resp
 }
 
 void si4707_free_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
-	// printf("freeing full response %p\n", response);
-
-    if (response->DATA != NULL) {
-        // printf("freeing response->DATA\n");
+  if (response->DATA != NULL) 
+	{
 		free(response->DATA);
-        response->DATA = NULL;
+    response->DATA = NULL;
 	}
 
-	if (response->CONF != NULL) {
-        // printf("freeing response->CONF\n");
+	if (response->CONF != NULL) 
+	{
 		free(response->CONF);
-        response->CONF = NULL;
+  	response->CONF = NULL;
 	}
-
-    // printf("done freeing full response\n");
 }
