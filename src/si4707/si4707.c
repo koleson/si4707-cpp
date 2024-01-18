@@ -17,9 +17,6 @@
 #define MIN(a, b) ((b)>(a)?(a):(b))
 #endif
 
-#define CTS_WAIT 250
-
-
 struct Si4707_HAL_FPs* current_hal = NULL;
 void si4707_set_hal(struct Si4707_HAL_FPs* hal) {
 	current_hal = hal;
