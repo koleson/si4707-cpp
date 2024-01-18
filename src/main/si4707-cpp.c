@@ -15,7 +15,7 @@
 #include "si4707_hal.h"
 
 // TODO:  conditionalize HAL inclusion based on target info
-#include "si4707_hal_rp2040.h"
+#include "si4707_hal_rp2040_spi.h"
 
 #define STATE_PRINT_INTERVAL 10
 
