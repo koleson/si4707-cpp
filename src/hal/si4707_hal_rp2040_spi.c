@@ -45,7 +45,8 @@ void hal_rp2040_assert_pinmap_set()
   }
 }
 
-void hal_rp2040_setup_si4707_spi() {
+void hal_rp2040_setup_si4707_spi()
+{
   hal_rp2040_assert_pinmap_set();
 
   // SPI initialization. 400kHz.
@@ -60,7 +61,8 @@ void hal_rp2040_setup_si4707_spi() {
   gpio_put(g_hal_rp2040_cs_pin, 1);
 }
 
-void hal_rp2040_prepare_interface() {
+void hal_rp2040_prepare_interface()
+{
   hal_rp2040_setup_si4707_spi();
 }
 
