@@ -254,7 +254,7 @@ uint8_t si4707_read_status() {
 // the command is sent in a separate method.
 // on I2C, i think it will look quite different.
 // kmo 17 jan 2024 16h32
-void si4707_read_resp(int length, uint8_t* resp) {
+void si4707_read_resp_16(uint8_t* resp) {
 	// TODO:  this is SPI-specific.  
 	// FIXME:  HAL
 	uint8_t resp_cmd[1];
@@ -267,15 +267,11 @@ void si4707_read_resp(int length, uint8_t* resp) {
 		// FIXME: HAL
 		spi_write_blocking(g_spi, resp_cmd, 1);
 		// FIXME: HAL
-		spi_read_blocking(g_spi, 0, resp, length);
+		spi_read_blocking(g_spi, 0, resp, 16);
 		si4707_txn_end();
 	} else {
 		puts("could not read response - CTS timeout");
 	}
-}
-
-void si4707_read_resp_16(uint8_t* resp) {
-	si4707_read_resp(16, resp);
 }
 
 void si4707_get_rev() {
@@ -291,7 +287,7 @@ void si4707_get_rev() {
 	
 	const bool cts_read = si4707_await_cts(CTS_WAIT);
 	if (cts_read) {
-		si4707_read_resp(2, product_data);
+		si4707_read_resp_16(product_data);
 		
 		const uint8_t pn = product_data[1];
 		// printf("product number: %d\n", pn);
