@@ -214,10 +214,12 @@ void reset_SAME_interrupts_and_buffer() {
   }
 }
 
-void set_si4707_pinmap_ez() {
+void set_si4707_hal() {
     // TODO:  conditionalize based on target MCU
     hal_rp2040_set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
                         SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
+    struct Si4707_HAL_FPs* hal = hal_rp2040_FPs();
+    si4707_set_hal(hal);
 }
 
 int oneshot() {
@@ -240,16 +242,7 @@ int oneshot() {
     sleep_ms(10);
     init_mqtt();
 
-    // setup HAL
-    // TODO:  conditionalize based on target mcu
-    set_si4707_pinmap_ez();
-    struct Si4707_HAL_FPs* hal = hal_rp2040_FPs();
-    si4707_set_hal(hal);
-
-    // resetting to SPI mode requires
-    // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
-    // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
-    // si4707_reset ends.  it seems easiest to drive it momentarily to make sure.
+    set_si4707_hal();
     
     si4707_reset();
     si4707_setup_interface();
