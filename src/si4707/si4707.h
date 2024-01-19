@@ -11,10 +11,8 @@ void si4707_set_hal(struct Si4707_HAL_FPs* hal);
 
 void si4707_free_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response);
 
-void si4707_set_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
-                       uint sck_pin, uint cs_pin, uint rst_pin, uint gpio1_pin,
-                       uint gpio2_pin);
-void si4707_setup_spi();
+void si4707_set_pinmap(spi_inst_t *spi);
+void si4707_setup_interface();
 
 // some of this should be private
 void si4707_reset();

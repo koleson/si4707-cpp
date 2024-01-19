@@ -19,35 +19,21 @@
 
 
 struct Si4707_HAL_FPs* current_hal = NULL;
+bool g_hal_checked = false;
+
 void si4707_set_hal(struct Si4707_HAL_FPs* hal) {
+	g_hal_checked = false;
 	current_hal = hal;
 }
 
 // TODO:  struct instead?
 // TODO:  move all to HAL
 spi_inst_t* g_spi = NULL;
-uint g_mosi_pin = 0;
-uint g_miso_pin = 0;
-uint g_sck_pin = 0;
-uint g_cs_pin = 0;
-uint g_reset_pin = 0;
-uint g_gpo1_pin = 0;
-uint g_gpo2_pin = 0;
 
 bool g_pinmap_set = false;
 
-void si4707_set_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
-                       uint sck_pin, uint cs_pin, uint rst_pin, uint gpio1_pin,
-                       uint gpio2_pin) {
-	g_mosi_pin = mosi_pin;
-	g_miso_pin = miso_pin;
-	g_sck_pin = sck_pin;
-  g_cs_pin = cs_pin;
-  g_reset_pin = rst_pin;
-  g_gpo1_pin = gpio1_pin;
-  g_gpo2_pin = gpio2_pin;
+void si4707_set_pinmap(spi_inst_t *spi) {
   g_spi = spi;
-
 	g_pinmap_set = true;
 }
 
@@ -59,7 +45,12 @@ void assert_pinmap_set() {
   }
 }
 
+
 void assert_HAL_set() {
+	if (g_hal_checked) 
+	{
+		return;
+	}
 	// TODO:  can probably cache HAL validity
 	// then invalidate when calling si4707_set_hal();
 	// but i don't think this is terribly slow anyways.
@@ -76,14 +67,18 @@ void assert_HAL_set() {
 			|| current_hal->txn_start == NULL
 			|| current_hal->txn_end == NULL
 			|| current_hal->reset == NULL
+			|| current_hal->send_command_get_response_16 == NULL
+			|| current_hal->read_status == NULL
 			)
 	{
 		printf("selected Si4707 HAL does not implement all expected methods.\n");
 		abort();
 	}
+
+	g_hal_checked = true;
 }
 
-void si4707_setup_spi() {
+void si4707_setup_interface() {
 	assert_HAL_set();
 	current_hal->prepare_interface();
 }
@@ -133,6 +128,7 @@ bool si4707_await_cts(const int maxWait) {
 }
 
 void si4707_power_up() {
+	assert_HAL_set();
 	puts("si4707_power_up");
 
 	uint8_t cmd = SI4707_CMD_POWER_UP;
@@ -157,6 +153,7 @@ void si4707_power_up() {
 }
 
 void si4707_tune() {
+	assert_HAL_set();
 	puts("tuning si4707 to 162.475MHz");
 	const uint8_t freqHigh = 0xFD;
 	const uint8_t freqLow = 0xDE;
@@ -176,39 +173,21 @@ void si4707_tune() {
 }
 
 void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
-    uint8_t cmd_buf[9] = { 0x00 };
-		
-		// SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
-    cmd_buf[0] = SI4707_SPI_SEND_CMD;
-    cmd_buf[1] = cmd;
+	assert_HAL_set();
+	// we will ignore response but we need a place for it
+	// kmo 19 jan 2024 11h29
 
-    cmd_buf[2] = args->ARG1; cmd_buf[3] = args->ARG2; cmd_buf[4] = args->ARG3; cmd_buf[5] = args->ARG4;
-    cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
-
-		current_hal->txn_start();
-		// FIXME: HAL_WRITE_CTS_READ
-		// FIXME: HAL
-		// TODO:  probably this should be waiting for CTS
-		// TODO:  therefore, CTS_WAIT should be defined 
-		//        at the driver level.
-    spi_write_blocking(g_spi, cmd_buf, 9);
-    current_hal->txn_end();
-
-    const bool cts = si4707_await_cts(CTS_WAIT);
-    if (cts) {
-        uint8_t resp_buf[16] = { 0x00 };
-        si4707_read_resp_16(resp_buf);
-    } else {
-        printf("could not send command %02x - CTS timeout\n", cmd);
-    }
+	uint8_t resp_buf[16];
+	current_hal->send_command_get_response_16(cmd, args, resp_buf);
 }
 
 void si4707_send_command_noargs(const uint8_t cmd) {
+	assert_HAL_set();
 	struct Si4707_Command_Args args;
-    args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
-    args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
+	args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
+	args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
 
-    si4707_send_command(cmd, &args);
+	si4707_send_command(cmd, &args);
 }
 
 // NOTE:  DO NOT try to replace this with read_resp, as that requires CTS
@@ -216,78 +195,28 @@ void si4707_send_command_noargs(const uint8_t cmd) {
 // kmo 17 jan 2024 16h26
 uint8_t si4707_read_status() {
 	assert_HAL_set();
-	const uint8_t status_cmd[1] = { SI4707_SPI_READ1_GPO1 }; // read status byte via GPO1
 	
-	// buffer:  receive power up status to this buffer
-	uint8_t status_result[1] = { 0x00 };
-	
-	si4707_txn_start();
-	// FIXME:  HAL_WRITE_NOCTS_READ
-	// FIXME: HAL
-	spi_write_blocking(g_spi, status_cmd, 1);
-	// FIXME:  HAL
-	spi_read_blocking(g_spi, 0, status_result, 1);
-	si4707_txn_end();
-	
-	return status_result[0];
-}
-
-// TODO:  i think this is SPI-specific because
-// the command is sent in a separate method.
-// on I2C, i think it will look quite different.
-// kmo 17 jan 2024 16h32
-void si4707_read_resp_16(uint8_t* resp) {
-	// TODO:  this is SPI-specific.  
-	// FIXME:  HAL
-	uint8_t resp_cmd[1];
-	resp_cmd[0] = SI4707_SPI_READ16_GPO1;        // read 16 response bytes via GPO1
-
-	const bool cts = si4707_await_cts(CTS_WAIT);
-	if (cts) {
-		si4707_txn_start();
-		// FIXME:  HAL_WRITE_NOCTS_READ
-		// FIXME: HAL
-		spi_write_blocking(g_spi, resp_cmd, 1);
-		// FIXME: HAL
-		spi_read_blocking(g_spi, 0, resp, 16);
-		si4707_txn_end();
-	} else {
-		puts("could not read response - CTS timeout");
-	}
+	return current_hal->read_status();
 }
 
 void si4707_get_rev() {
 	uint8_t product_data[16] = { 0x00 };
+	struct Si4707_Command_Args args;
 	
-	const bool cts_cmd = si4707_await_cts(CTS_WAIT);
-	if (cts_cmd) {
-		si4707_send_command_noargs(SI4707_CMD_GET_REV);
-	} else {
-		puts("could not request product info - CTS timeout");
-		return;
-	}
+	current_hal->send_command_get_response_16(SI4707_CMD_GET_REV, &args, product_data);
 	
-	const bool cts_read = si4707_await_cts(CTS_WAIT);
-	if (cts_read) {
-		si4707_read_resp_16(product_data);
-		
-		const uint8_t pn = product_data[1];
-		// printf("product number: %d\n", pn);
-		
-		if (pn != 7) {
-			printf("product number invalid - halting\n\n");
-			abort();
-		}
-	} else {
-		puts("could not read product info - CTS timeout");
+	const uint8_t pn = product_data[1];
+	if (pn != 7) {
+		printf("product number invalid - halting\n\n");
+		abort();
 	}
 }
 
 void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
-	si4707_send_command_noargs(SI4707_CMD_WB_RSQ_STATUS);
+	struct Si4707_Command_Args args;
+	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
 
-	si4707_read_resp_16(wb_rsq_resp);
 	const uint8_t valid = wb_rsq_resp[2] & 0x01;
 	const uint8_t rssi = wb_rsq_resp[4];
 	const uint8_t snr = wb_rsq_resp[5];
@@ -316,8 +245,7 @@ void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
   args.ARG2 = params->READADDR; args.ARG3 = 0x00; args.ARG4 = 0x00; 
 	args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
 
-  si4707_send_command(SI4707_CMD_WB_SAME_STATUS, &args);
-  si4707_read_resp_16(wb_same_resp);
+	current_hal->send_command_get_response_16(SI4707_CMD_WB_SAME_STATUS, &args, wb_same_resp);
 
   // byte 0:  CTS/ERR/-/-/RSQINT/SAMEINT/ASQINT/STCINT
   packet->CTS = ((wb_same_resp[0] & 0x80) != 0);

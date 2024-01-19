@@ -161,6 +161,18 @@ void hal_rp2040_spi_si4707_send_command_get_response(const uint8_t cmd,
   hal_rp2040_si4707_txn_end();
 }
 
+uint8_t hal_rp2040_spi_si4707_read_status() {
+  uint8_t status_resp[1] = { 0x00 };
+  uint8_t cmd[1] = { SI4707_SPI_READ1_GPO1 };
+
+  hal_rp2040_si4707_txn_start();
+  spi_write_blocking(g_hal_rp2040_spi, cmd, 1);
+  spi_read_blocking(g_hal_rp2040_spi, 0, status_resp, 1);
+  hal_rp2040_si4707_txn_end();
+
+  return status_resp[0];
+}
+
 struct Si4707_HAL_FPs* hal_rp2040_FPs() 
 {
   struct Si4707_HAL_FPs* function_pointers = (struct Si4707_HAL_FPs*)malloc(sizeof(struct Si4707_HAL_FPs));
@@ -170,6 +182,7 @@ struct Si4707_HAL_FPs* hal_rp2040_FPs()
   function_pointers->prepare_interface = hal_rp2040_prepare_interface;
   function_pointers->reset = hal_rp2040_si4707_reset;
   function_pointers->send_command_get_response_16 = hal_rp2040_spi_si4707_send_command_get_response;
+  function_pointers->read_status = hal_rp2040_spi_si4707_read_status;
 
   return function_pointers;
 }

@@ -215,7 +215,8 @@ void reset_SAME_interrupts_and_buffer() {
 }
 
 void set_si4707_pinmap_ez() {
-	si4707_set_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
+	si4707_set_pinmap(SI4707_SPI_PORT);
+    hal_rp2040_set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
                         SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
 }
 
@@ -232,9 +233,6 @@ int oneshot() {
     }
 
     set_final_MAC_bytes(board_id.id[5], board_id.id[4]);
-
-    
-
     snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
     update_root_topic(g_board_id_string);
 
@@ -244,19 +242,17 @@ int oneshot() {
 
     // setup HAL
     // TODO:  conditionalize based on target mcu
-    hal_rp2040_set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
-                        SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
+    set_si4707_pinmap_ez();
     struct Si4707_HAL_FPs* hal = hal_rp2040_FPs();
-
     si4707_set_hal(hal);
 
     // resetting to SPI mode requires
     // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
     // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
     // si4707_reset ends.  it seems easiest to drive it momentarily to make sure.
-    set_si4707_pinmap_ez();
+    
     si4707_reset();
-    si4707_setup_spi();
+    si4707_setup_interface();
 
     si4707_power_up();
     const int cts = si4707_await_cts(500);
