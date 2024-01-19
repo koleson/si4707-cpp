@@ -215,7 +215,7 @@ void reset_SAME_interrupts_and_buffer() {
 }
 
 void set_si4707_pinmap_ez() {
-	si4707_set_pinmap(SI4707_SPI_PORT);
+    // TODO:  conditionalize based on target MCU
     hal_rp2040_set_si4707_pinmap(SI4707_SPI_PORT, SI4707_SPI_MOSI, SI4707_SPI_MISO, SI4707_SPI_SCK, 
                         SI4707_SPI_CS, SI4707_RESET, SI4707_GPO1, SI4707_GPO2);
 }

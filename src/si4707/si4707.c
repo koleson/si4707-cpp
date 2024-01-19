@@ -26,25 +26,6 @@ void si4707_set_hal(struct Si4707_HAL_FPs* hal) {
 	current_hal = hal;
 }
 
-// TODO:  struct instead?
-// TODO:  move all to HAL
-spi_inst_t* g_spi = NULL;
-
-bool g_pinmap_set = false;
-
-void si4707_set_pinmap(spi_inst_t *spi) {
-  g_spi = spi;
-	g_pinmap_set = true;
-}
-
-void assert_pinmap_set() {
-	if (!g_pinmap_set) 
-	{
-    printf("WARNING:  pinmap not set for Si4707 but you're trying to use it\n");
-		return;
-  }
-}
-
 
 void assert_HAL_set() {
 	if (g_hal_checked) 
