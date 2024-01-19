@@ -90,3 +90,5 @@
 #define SI4707_SAME_STATE_HEADER_COMPLETE		3
 
 // TODO:  this list of available properties is probably not complete.  check AN332.  kmo 9 oct 2023
+#define CTS_WAIT 250
+

@@ -17,8 +17,6 @@
 #define MIN(a, b) ((b)>(a)?(a):(b))
 #endif
 
-#define CTS_WAIT 250
-
 
 struct Si4707_HAL_FPs* current_hal = NULL;
 void si4707_set_hal(struct Si4707_HAL_FPs* hal) {
@@ -136,10 +134,9 @@ bool si4707_await_cts(const int maxWait) {
 
 void si4707_power_up() {
 	puts("si4707_power_up");
-	// si4707 startup command buffer
-	uint8_t cmd[9] = { 0x00 };
-	cmd[0] = SI4707_SPI_SEND_CMD;       // write a command (drives 8 bytes on SDIO)
-	cmd[1] = SI4707_CMD_POWER_UP;
+
+	uint8_t cmd = SI4707_CMD_POWER_UP;
+	struct Si4707_Command_Args args;
 	
 	// 0x53
 	// CTS interrupt disable
@@ -147,22 +144,15 @@ void si4707_power_up() {
 	// boot normally
 	// crystal oscillator enabled
 	// weatherband receive
-	cmd[2] = 0x53;
+	args.ARG1 = 0x53;
 	
 	// 0x05:  analog output mode
-	cmd[3] = 0x05;
-	
-	puts("si4707_power_up: txn about to start\n");
-	si4707_txn_start();
+	args.ARG2 = 0x05;
 
-	// write 9 bytes - control + cmd + 7 args
-	// FIXME: HAL
-	spi_write_blocking(g_spi, cmd, 9);
+	uint8_t resp_buf[16];
 	
-	si4707_txn_end();
-	
-	si4707_await_cts(CTS_WAIT); 
-	
+	current_hal->send_command_get_response_16(cmd, &args, resp_buf);
+
 	sleep_ms(10);
 }
 
@@ -171,24 +161,16 @@ void si4707_tune() {
 	const uint8_t freqHigh = 0xFD;
 	const uint8_t freqLow = 0xDE;
 	
-	uint8_t cmd[9] = { 0x00 };
-	cmd[0] = SI4707_SPI_SEND_CMD;       // write a command (drives 8 bytes on SDIO)
-	cmd[1] = SI4707_CMD_WB_TUNE_FREQ;
-	cmd[2] = 0x00;                      // AN332 page 180 - reserved, always write 0, no meaning
-	cmd[3] = freqHigh;
-	cmd[4] = freqLow;
-	
-	const bool cts = si4707_await_cts(CTS_WAIT);
-	if (cts) {
-		si4707_txn_start();
-		// FIXME: HAL
-		spi_write_blocking(g_spi, cmd, 9);
-		si4707_txn_end();
-	} else {
-		puts("could not tune - CTS timeout");
-	}
-	
-	
+	uint8_t cmd = SI4707_CMD_WB_TUNE_FREQ;		// write a command (drives 8 bytes on SDIO)
+	struct Si4707_Command_Args args;
+	args.ARG1 = 0x00;											// AN332 page 180 - reserved, always write 0, no meaning
+	args.ARG2 = freqHigh;
+	args.ARG3 = freqLow;
+	args.ARG4 = 0x00; args.ARG5 = 0x00; args.ARG6 = 0x00; args.ARG7 = 0x00;
+
+	uint8_t resp_buf[16];
+	current_hal->send_command_get_response_16(cmd, &args, resp_buf);
+
 	// tune status takes a moment to populate, so we don't check it here.
 	// kmo 10 oct 2023 21h54
 }

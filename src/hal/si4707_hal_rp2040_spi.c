@@ -7,6 +7,8 @@
 #include "hardware/spi.h"
 
 #include "si4707_hal.h"
+#include "si4707_const.h"
+#include "si4707.h"
 
 spi_inst_t* g_hal_rp2040_spi = NULL;
 uint g_hal_rp2040_mosi_pin = 0;
@@ -117,6 +119,48 @@ void hal_rp2040_si4707_reset()
 	sleep_ms(2);
 }
 
+void hal_rp2040_spi_si4707_send_command_get_response(const uint8_t cmd, 
+    const struct Si4707_Command_Args* args, uint8_t* resp_buf)
+{
+  const bool cmd_cts = si4707_await_cts(CTS_WAIT);
+
+  if (!cmd_cts) {
+    printf("exhausted patience waiting for CTS - aborting\n");
+    abort();
+  }
+
+  uint8_t cmd_buf[9] = { 0x00 };
+		
+  // SPI command send - 8 bytes follow - 1 byte of cmd, 7 bytes of arg
+  cmd_buf[0] = SI4707_SPI_SEND_CMD;
+  cmd_buf[1] = cmd;
+
+  cmd_buf[2] = args->ARG1; cmd_buf[3] = args->ARG2; cmd_buf[4] = args->ARG3; cmd_buf[5] = args->ARG4;
+  cmd_buf[6] = args->ARG5; cmd_buf[7] = args->ARG6; cmd_buf[8] = args->ARG7;
+
+  hal_rp2040_si4707_txn_start();
+
+  spi_write_blocking(g_hal_rp2040_spi, cmd_buf, 9);
+
+  hal_rp2040_si4707_txn_end();
+
+  const bool resp_cts = si4707_await_cts(CTS_WAIT);
+
+  if (!resp_cts) {
+    printf("exhausted patience waiting for CTS - aborting\n");
+    abort();
+  }
+  uint8_t resp_cmd[1];
+  resp_cmd[0] = SI4707_SPI_READ16_GPO1;
+  
+  hal_rp2040_si4707_txn_start();
+  
+  spi_write_blocking(g_hal_rp2040_spi, resp_cmd, 1);
+  spi_read_blocking(g_hal_rp2040_spi, 0, resp_buf, 16);
+  
+  hal_rp2040_si4707_txn_end();
+}
+
 struct Si4707_HAL_FPs* hal_rp2040_FPs() 
 {
   struct Si4707_HAL_FPs* function_pointers = (struct Si4707_HAL_FPs*)malloc(sizeof(struct Si4707_HAL_FPs));
@@ -125,6 +169,7 @@ struct Si4707_HAL_FPs* hal_rp2040_FPs()
   function_pointers->txn_end = hal_rp2040_si4707_txn_end;
   function_pointers->prepare_interface = hal_rp2040_prepare_interface;
   function_pointers->reset = hal_rp2040_si4707_reset;
+  function_pointers->send_command_get_response_16 = hal_rp2040_spi_si4707_send_command_get_response;
 
   return function_pointers;
 }

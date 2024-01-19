@@ -15,7 +15,7 @@ struct Si4707_HAL_FPs {
   void (*reset)();
   void (*power_up)();
   void (*send_command)(const uint8_t cmd, const struct Si4707_Command_Args* args);
-
+  void (*send_command_get_response_16)(const uint8_t cmd, const struct Si4707_Command_Args* args, uint8_t* resp_buf);
 };
 
 #endif // SI4707_HAL_H
