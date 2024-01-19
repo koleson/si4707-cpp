@@ -86,43 +86,44 @@ void hal_rp2040_si4707_txn_end()
 void hal_rp2040_spi_si4707_reset()
 {
   _hal_rp2040_assert_pinmap_set();
-  
+
   // resetting to SPI mode requires
-  // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use here)
-  // GPO1 can float or be driven - since it's used for SPI, we have to deinit it before
-  // si4707_reset ends.  it seems easiest to drive it momentarily to make sure.
-  
+  // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use
+  // here) GPO1 can float or be driven - since it's used for SPI, we have to
+  // deinit it before si4707_reset ends.  it seems easiest to drive it
+  // momentarily to make sure.
+
   puts("resetting Si4707");
-	
-	gpio_init(_hal_rp2040_reset_pin);
-	gpio_set_dir(_hal_rp2040_reset_pin, GPIO_OUT);
-	gpio_put(_hal_rp2040_reset_pin, 0);
-	sleep_ms(10);
-	
-	// drive GPO2/INT + GPO1/MISO high to select SPI bus mode on Si4707
-	gpio_init(_hal_rp2040_gpo1_pin);
-	gpio_set_dir(_hal_rp2040_gpo1_pin, GPIO_OUT);
-	gpio_put(_hal_rp2040_gpo1_pin, 1);
-	
-	// GPO1 = MISO - we can use it before SPI is set up
-	gpio_init(_hal_rp2040_gpo2_pin);
-	gpio_set_dir(_hal_rp2040_gpo2_pin, GPIO_OUT);
-	gpio_put(_hal_rp2040_gpo2_pin, 1);
-	
-	sleep_ms(5);
-	
-	gpio_put(_hal_rp2040_reset_pin, 1);
-	sleep_ms(5);
-	
-	gpio_put(_hal_rp2040_gpo1_pin, 0);
-	gpio_put(_hal_rp2040_gpo2_pin, 0);
-	sleep_ms(2);
-	
-	// GPO could be used as INT later
-	gpio_deinit(_hal_rp2040_gpo1_pin);
-	// GPO1 is used as MISO later
-	gpio_deinit(_hal_rp2040_gpo2_pin);
-	sleep_ms(2);
+
+  gpio_init(_hal_rp2040_reset_pin);
+  gpio_set_dir(_hal_rp2040_reset_pin, GPIO_OUT);
+  gpio_put(_hal_rp2040_reset_pin, 0);
+  sleep_ms(10);
+
+  // drive GPO2/INT + GPO1/MISO high to select SPI bus mode on Si4707
+  gpio_init(_hal_rp2040_gpo1_pin);
+  gpio_set_dir(_hal_rp2040_gpo1_pin, GPIO_OUT);
+  gpio_put(_hal_rp2040_gpo1_pin, 1);
+
+  // GPO1 = MISO - we can use it before SPI is set up
+  gpio_init(_hal_rp2040_gpo2_pin);
+  gpio_set_dir(_hal_rp2040_gpo2_pin, GPIO_OUT);
+  gpio_put(_hal_rp2040_gpo2_pin, 1);
+
+  sleep_ms(5);
+
+  gpio_put(_hal_rp2040_reset_pin, 1);
+  sleep_ms(5);
+
+  gpio_put(_hal_rp2040_gpo1_pin, 0);
+  gpio_put(_hal_rp2040_gpo2_pin, 0);
+  sleep_ms(2);
+
+  // GPO could be used as INT later
+  gpio_deinit(_hal_rp2040_gpo1_pin);
+  // GPO1 is used as MISO later
+  gpio_deinit(_hal_rp2040_gpo2_pin);
+  sleep_ms(2);
 }
 
 void hal_rp2040_spi_si4707_send_command_get_response(const uint8_t cmd, 
