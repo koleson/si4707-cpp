@@ -27,15 +27,11 @@ void si4707_set_hal(struct Si4707_HAL_FPs* hal) {
 }
 
 
-void assert_HAL_set() {
+static void assert_HAL_set() {
 	if (g_hal_checked) 
 	{
 		return;
 	}
-	// TODO:  can probably cache HAL validity
-	// then invalidate when calling si4707_set_hal();
-	// but i don't think this is terribly slow anyways.
-	// kmo 17 jan 2024 13h35
 
 	if (!current_hal)
 	{
@@ -64,18 +60,6 @@ void si4707_setup_interface() {
 	current_hal->prepare_interface();
 }
 
-static inline void si4707_txn_start() {
-	assert_HAL_set();
-	current_hal->txn_start();
-}
-
-static inline void si4707_txn_end() {
-  assert_HAL_set();
-	current_hal->txn_end();
-}
-
-// end SPI base stuff
-
 void si4707_reset() {
 	assert_HAL_set();
 	current_hal->reset();
@@ -86,7 +70,7 @@ bool si4707_await_cts(const int maxWait) {
 	assert_HAL_set();
 	
 	int i = 0;
-	char status = 0;
+	uint8_t status = 0;
 	while ((status & 0x80) == 0x00 && i < maxWait) {
 		status = si4707_read_status();
 		
@@ -112,7 +96,7 @@ void si4707_power_up() {
 	assert_HAL_set();
 	puts("si4707_power_up");
 
-	uint8_t cmd = SI4707_CMD_POWER_UP;
+	const uint8_t cmd = SI4707_CMD_POWER_UP;
 	struct Si4707_Command_Args args;
 	
 	// 0x53
@@ -139,7 +123,7 @@ void si4707_tune() {
 	const uint8_t freqHigh = 0xFD;
 	const uint8_t freqLow = 0xDE;
 	
-	uint8_t cmd = SI4707_CMD_WB_TUNE_FREQ;		// write a command (drives 8 bytes on SDIO)
+	const uint8_t cmd = SI4707_CMD_WB_TUNE_FREQ;		// write a command (drives 8 bytes on SDIO)
 	struct Si4707_Command_Args args;
 	args.ARG1 = 0x00;											// AN332 page 180 - reserved, always write 0, no meaning
 	args.ARG2 = freqHigh;
@@ -182,7 +166,7 @@ uint8_t si4707_read_status() {
 
 void si4707_get_rev() {
 	uint8_t product_data[16] = { 0x00 };
-	struct Si4707_Command_Args args;
+	const struct Si4707_Command_Args args;
 	
 	current_hal->send_command_get_response_16(SI4707_CMD_GET_REV, &args, product_data);
 	
@@ -195,7 +179,7 @@ void si4707_get_rev() {
 
 void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
-	struct Si4707_Command_Args args;
+	const struct Si4707_Command_Args args;
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
 
 	const uint8_t valid = wb_rsq_resp[2] & 0x01;
@@ -252,7 +236,7 @@ void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
   memcpy(packet->DATA, wb_same_resp + 6, 8);
 }
 
-void _copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_Status_Packet * status_packet, struct Si4707_SAME_Status_FullResponse * full_response) {
+static void copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_Status_Packet * status_packet, struct Si4707_SAME_Status_FullResponse * full_response) {
 	// byte 0
 	full_response->CTS = 			status_packet->CTS;
 	full_response->ERR =			status_packet->ERR;
@@ -272,7 +256,7 @@ void _copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_Status
     // printf("si4707_get_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
 }
 
-int _responses_needed(int msglen) {
+static int responses_needed(int msglen) {
 	// maximum message length is ~250 chars.
 	const int whole_responses_needed = msglen / 8;
 	const int remainder = msglen % 8;
@@ -298,18 +282,18 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
 
 	si4707_get_same_packet(params, &first_packet);
 
-	_copy_si4707_status_packet_to_full_response(&first_packet, full_response);
+	copy_si4707_status_packet_to_full_response(&first_packet, full_response);
 
-	unsigned int whole_responses_needed = _responses_needed(first_packet.MSGLEN);
+	unsigned int whole_responses_needed = responses_needed(first_packet.MSGLEN);
 
 	// TODO:  malloc size based on MSGLEN.  kmo 18 oct 2023 15h54
 	// MSGLEN can be at most 255, so adding null termination, 256 max length
 	const unsigned int alloc_length = 256;
-	uint8_t* same_buf = malloc(sizeof(uint8_t) * alloc_length);
+	uint8_t* same_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
 
   // TODO:  confidence might not actually need to be this big? kmo 4 nov 2023 11h23
 	// TODO:  populate this buffer
-  uint8_t* conf_buf = malloc(sizeof(uint8_t) * alloc_length);
+  uint8_t* conf_buf = (uint8_t*)malloc(sizeof(uint8_t) * alloc_length);
 	
 	// auto-null-termination
 	for (unsigned int i = 0; i < alloc_length; i++) {

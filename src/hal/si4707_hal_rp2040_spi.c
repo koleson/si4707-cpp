@@ -10,72 +10,72 @@
 #include "si4707_const.h"
 #include "si4707.h"
 
-spi_inst_t* _hal_rp2040_spi = NULL;
-uint _hal_rp2040_mosi_pin = 0;
-uint _hal_rp2040_miso_pin = 0;
-uint _hal_rp2040_sck_pin = 0;
-uint _hal_rp2040_cs_pin = 0;
-uint _hal_rp2040_reset_pin = 0;
-uint _hal_rp2040_gpo1_pin = 0;
-uint _hal_rp2040_gpo2_pin = 0;
+static spi_inst_t* hal_rp2040_spi = NULL;
+static uint8_t hal_rp2040_mosi_pin = 0;
+static uint8_t hal_rp2040_miso_pin = 0;
+static uint8_t hal_rp2040_sck_pin = 0;
+static uint8_t hal_rp2040_cs_pin = 0;
+static uint8_t hal_rp2040_reset_pin = 0;
+static uint8_t hal_rp2040_gpo1_pin = 0;
+static uint8_t hal_rp2040_gpo2_pin = 0;
 
-bool _hal_rp2040_pinmap_set = false;
+static bool hal_rp2040_pinmap_set = false;
 
 void hal_rp2040_set_si4707_pinmap(spi_inst_t *spi, uint mosi_pin, uint miso_pin,
                        uint sck_pin, uint cs_pin, uint rst_pin, uint gpio1_pin,
                        uint gpio2_pin) 
 {
-  _hal_rp2040_spi = spi;
-  _hal_rp2040_mosi_pin = mosi_pin;
-  _hal_rp2040_miso_pin = miso_pin;
-  _hal_rp2040_sck_pin = sck_pin;
-  _hal_rp2040_cs_pin = cs_pin;
-  _hal_rp2040_reset_pin = rst_pin;
-  _hal_rp2040_gpo1_pin = gpio1_pin;
-  _hal_rp2040_gpo2_pin = gpio2_pin;
+  hal_rp2040_spi = spi;
+  hal_rp2040_mosi_pin = mosi_pin;
+  hal_rp2040_miso_pin = miso_pin;
+  hal_rp2040_sck_pin = sck_pin;
+  hal_rp2040_cs_pin = cs_pin;
+  hal_rp2040_reset_pin = rst_pin;
+  hal_rp2040_gpo1_pin = gpio1_pin;
+  hal_rp2040_gpo2_pin = gpio2_pin;
   
-	_hal_rp2040_pinmap_set = true;
+	hal_rp2040_pinmap_set = true;
 }
 
-void _hal_rp2040_assert_pinmap_set() {
-	if (!_hal_rp2040_pinmap_set) {
+static void hal_rp2040_assert_pinmap_set() {
+	if (!hal_rp2040_pinmap_set) {
     printf("RP2040 HAL:  pinmap not set for Si4707 but you're trying to use it\n");
 		abort();
   }
 }
 
-void _hal_rp2040_setup_si4707_spi() {
-  _hal_rp2040_assert_pinmap_set();
+static void hal_rp2040_setup_si4707_spi() {
+  hal_rp2040_assert_pinmap_set();
 
   // SPI initialization. 400kHz.
-  spi_init(_hal_rp2040_spi, 400 * 1000);
-  gpio_set_function(_hal_rp2040_mosi_pin, GPIO_FUNC_SPI);
-  gpio_set_function(_hal_rp2040_miso_pin, GPIO_FUNC_SPI);
-  gpio_set_function(_hal_rp2040_sck_pin, GPIO_FUNC_SPI);
-  gpio_set_function(_hal_rp2040_cs_pin, GPIO_FUNC_SIO);
+  spi_init(hal_rp2040_spi, 400 * 1000);
+  gpio_set_function(hal_rp2040_mosi_pin, GPIO_FUNC_SPI);
+  gpio_set_function(hal_rp2040_miso_pin, GPIO_FUNC_SPI);
+  gpio_set_function(hal_rp2040_sck_pin, GPIO_FUNC_SPI);
+  gpio_set_function(hal_rp2040_cs_pin, GPIO_FUNC_SIO);
 
   // Chip select is active-low, so we'll initialize it to a driven-high state
-  gpio_set_dir(_hal_rp2040_cs_pin, GPIO_OUT);
-  gpio_put(_hal_rp2040_cs_pin, 1);
+  gpio_set_dir(hal_rp2040_cs_pin, GPIO_OUT);
+  gpio_put(hal_rp2040_cs_pin, true);
 }
 
 void hal_rp2040_prepare_interface() {
-  _hal_rp2040_setup_si4707_spi();
+  hal_rp2040_setup_si4707_spi();
 }
 
 void hal_rp2040_si4707_txn_start() 
 {
-  _hal_rp2040_assert_pinmap_set();
+  hal_rp2040_assert_pinmap_set();
   asm volatile("nop \n nop \n nop");
-	gpio_put(_hal_rp2040_cs_pin, 0);  // Active low
+	gpio_put(hal_rp2040_cs_pin, false);  // Active low
 	asm volatile("nop \n nop \n nop");
 }
 
 void hal_rp2040_si4707_txn_end() 
 {
-  _hal_rp2040_assert_pinmap_set();
+  hal_rp2040_assert_pinmap_set();
 	asm volatile("nop \n nop \n nop");
-	gpio_put(_hal_rp2040_cs_pin, 1);
+	gpio_put(hal_rp2040_cs_pin, true);
 	asm volatile("nop \n nop \n nop");
 }
 
@@ -85,7 +85,7 @@ void hal_rp2040_si4707_txn_end()
 // kmo 17 jan 2024
 void hal_rp2040_spi_si4707_reset()
 {
-  _hal_rp2040_assert_pinmap_set();
+  hal_rp2040_assert_pinmap_set();
 
   // resetting to SPI mode requires
   // GPO2 *AND* GPO1 are high.  GPO2 must be driven (easy, it has no other use
@@ -95,34 +95,34 @@ void hal_rp2040_spi_si4707_reset()
 
   puts("resetting Si4707");
 
-  gpio_init(_hal_rp2040_reset_pin);
-  gpio_set_dir(_hal_rp2040_reset_pin, GPIO_OUT);
-  gpio_put(_hal_rp2040_reset_pin, 0);
+  gpio_init(hal_rp2040_reset_pin);
+  gpio_set_dir(hal_rp2040_reset_pin, GPIO_OUT);
+  gpio_put(hal_rp2040_reset_pin, false);
   sleep_ms(10);
 
   // drive GPO2/INT + GPO1/MISO high to select SPI bus mode on Si4707
-  gpio_init(_hal_rp2040_gpo1_pin);
-  gpio_set_dir(_hal_rp2040_gpo1_pin, GPIO_OUT);
-  gpio_put(_hal_rp2040_gpo1_pin, 1);
+  gpio_init(hal_rp2040_gpo1_pin);
+  gpio_set_dir(hal_rp2040_gpo1_pin, GPIO_OUT);
+  gpio_put(hal_rp2040_gpo1_pin, true);
 
   // GPO1 = MISO - we can use it before SPI is set up
-  gpio_init(_hal_rp2040_gpo2_pin);
-  gpio_set_dir(_hal_rp2040_gpo2_pin, GPIO_OUT);
-  gpio_put(_hal_rp2040_gpo2_pin, 1);
+  gpio_init(hal_rp2040_gpo2_pin);
+  gpio_set_dir(hal_rp2040_gpo2_pin, GPIO_OUT);
+  gpio_put(hal_rp2040_gpo2_pin, true);
 
   sleep_ms(5);
 
-  gpio_put(_hal_rp2040_reset_pin, 1);
+  gpio_put(hal_rp2040_reset_pin, true);
   sleep_ms(5);
 
-  gpio_put(_hal_rp2040_gpo1_pin, 0);
-  gpio_put(_hal_rp2040_gpo2_pin, 0);
+  gpio_put(hal_rp2040_gpo1_pin, false);
+  gpio_put(hal_rp2040_gpo2_pin, false);
   sleep_ms(2);
 
   // GPO could be used as INT later
-  gpio_deinit(_hal_rp2040_gpo1_pin);
+  gpio_deinit(hal_rp2040_gpo1_pin);
   // GPO1 is used as MISO later
-  gpio_deinit(_hal_rp2040_gpo2_pin);
+  gpio_deinit(hal_rp2040_gpo2_pin);
   sleep_ms(2);
 }
 
@@ -147,7 +147,7 @@ void hal_rp2040_spi_si4707_send_command_get_response(const uint8_t cmd,
 
   hal_rp2040_si4707_txn_start();
 
-  spi_write_blocking(_hal_rp2040_spi, cmd_buf, 9);
+  spi_write_blocking(hal_rp2040_spi, cmd_buf, 9);
 
   hal_rp2040_si4707_txn_end();
 
@@ -162,19 +162,19 @@ void hal_rp2040_spi_si4707_send_command_get_response(const uint8_t cmd,
   
   hal_rp2040_si4707_txn_start();
   
-  spi_write_blocking(_hal_rp2040_spi, resp_cmd, 1);
-  spi_read_blocking(_hal_rp2040_spi, 0, resp_buf, 16);
+  spi_write_blocking(hal_rp2040_spi, resp_cmd, 1);
+  spi_read_blocking(hal_rp2040_spi, 0, resp_buf, 16);
   
   hal_rp2040_si4707_txn_end();
 }
 
 uint8_t hal_rp2040_spi_si4707_read_status() {
   uint8_t status_resp[1] = { 0x00 };
-  uint8_t cmd[1] = { SI4707_SPI_READ1_GPO1 };
+  const uint8_t cmd[1] = { SI4707_SPI_READ1_GPO1 };
 
   hal_rp2040_si4707_txn_start();
-  spi_write_blocking(_hal_rp2040_spi, cmd, 1);
-  spi_read_blocking(_hal_rp2040_spi, 0, status_resp, 1);
+  spi_write_blocking(hal_rp2040_spi, cmd, 1);
+  spi_read_blocking(hal_rp2040_spi, 0, status_resp, 1);
   hal_rp2040_si4707_txn_end();
 
   return status_resp[0];

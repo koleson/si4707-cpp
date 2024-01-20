@@ -4,9 +4,7 @@
 
 #ifndef SI4707_CPP_SI4707_STRUCTS_H
 #define SI4707_CPP_SI4707_STRUCTS_H
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+
 #include <stdbool.h>
 #include "pico/stdlib.h"
 

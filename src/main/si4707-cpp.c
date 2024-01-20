@@ -78,7 +78,7 @@ void broadcast_handler(const struct Si4707_SAME_Status_Packet *status) {};
 void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
     // TODO:  implementing this correctly requires passing in timing information
     // (or getting it directly, but in general prefer testability of passing in time)
-    uint64_t now = time_us_64();
+    const uint64_t now = time_us_64();
     if (now - gs_first_EOM_timestamp_us > 8000000) {
         printf("\n\n=== EOM TIMEOUT COMPLETE - RESETTING INTERRUPTS ===\n");
         // CRITICAL:  MUST RESET INTERRUPTS / STATUS BEFORE RESETTING system_state TO IDLE!
@@ -192,12 +192,10 @@ void reset_SAME_interrupts_and_buffer() {
   same_params.INTACK = true;
 
   struct Si4707_RSQ_Status rsq_status;
-  uint8_t status = 0;
 
   const bool rsq_cts = si4707_await_cts(100);
   if (rsq_cts) 
   {
-    status = si4707_read_status();
     si4707_get_rsq(&rsq_status);
   } 
   else 
@@ -222,7 +220,7 @@ void set_si4707_hal() {
     si4707_set_hal(hal);
 }
 
-int oneshot() {
+void oneshot() {
     prepare();
 
     pico_unique_board_id_t board_id;
@@ -313,7 +311,7 @@ int main() {
 
 
         if (microseconds_since_last_heartbeat > g_current_heartbeat_interval) {
-            gpio_put(PICO_DEFAULT_LED_PIN, 1);
+            gpio_put(PICO_DEFAULT_LED_PIN, true);
             printf("\n ====== heartbeating ======================================\n");
 
             si4707_print_rsq();
@@ -331,7 +329,7 @@ int main() {
 
             last_DHCP_run = maintain_dhcp_lease(dhcp_interval, now, last_DHCP_run);
 
-            gpio_put(PICO_DEFAULT_LED_PIN, 0);
+            gpio_put(PICO_DEFAULT_LED_PIN, false);
             main_loops++;
         }
 
