@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "pico/stdlib.h"
+#include <stdlib.h>
 
 #include "hardware/timer.h"
 
@@ -10,7 +11,10 @@
 #include "si4707_const.h"
 
 #include "si4707.h"
+
+#if SI4707_WIZNET
 #include "mqtt-publisher.h"
+#endif // SI4707_WIZNET
 
 #include "si4707_hal.h"
 
@@ -116,6 +120,7 @@ void prepare() {
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 }
 
+#if SI4707_WIZNET
 uint64_t maintain_dhcp_lease(uint64_t dhcp_interval, uint64_t now, uint64_t last_DHCP_run) {
     const uint64_t microseconds_since_last_DHCP_run = now - last_DHCP_run;
     if (microseconds_since_last_DHCP_run > dhcp_interval) {
@@ -131,6 +136,7 @@ uint64_t maintain_dhcp_lease(uint64_t dhcp_interval, uint64_t now, uint64_t last
     }
     return last_DHCP_run;
 }
+#endif // SI4707_WIZNET
 
 void construct_and_publish_heartbeat(int main_loops, const struct Si4707_RSQ_Status *rsq_status) {
     struct Si4707_Heartbeat heartbeat;
@@ -138,7 +144,9 @@ void construct_and_publish_heartbeat(int main_loops, const struct Si4707_RSQ_Sta
     heartbeat.si4707_started = g_Si4707_booted_successfully;
     heartbeat.snr = (*rsq_status).ASNR;
     heartbeat.rssi = (*rsq_status).RSSI;
+#if SI4707_WIZNET
     publish_heartbeat(&heartbeat);
+#endif // SI4707_WIZNET
 }
 
 void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *same_params) {
@@ -156,7 +164,10 @@ void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *sa
     //printf("printing SAME status\n");
     si4707_print_same_status(&same_status);
     //printf("publishing SAME status\n");
+
+#if SI4707_WIZNET
     publish_SAME_status(&same_status);
+#endif // SI4707_WIZNET
 
     si4707_free_SAME_Status_FullResponse(&same_status);
 }
@@ -232,13 +243,18 @@ void oneshot() {
         printf("%d: %02X  ", len, board_id.id[len]);
     }
 
+#if SI4707_WIZNET
     set_final_MAC_bytes(board_id.id[5], board_id.id[4]);
     snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
     update_root_topic(g_board_id_string);
 
     printf("\n\n");
     sleep_ms(10);
+
     init_mqtt();
+#else // SI4707_WIZNET off
+    printf("no networking in this build.");
+#endif // SI4707_WIZNET
 
     set_si4707_hal();
     
@@ -326,9 +342,9 @@ int main() {
             outer_loops_since_last_heartbeat = 0;
 
             get_and_publish_full_SAME_status(&same_params);
-
+#if SI4707_WIZNET
             last_DHCP_run = maintain_dhcp_lease(dhcp_interval, now, last_DHCP_run);
-
+#endif // SI4707_WIZNET
             gpio_put(PICO_DEFAULT_LED_PIN, false);
             main_loops++;
         }
