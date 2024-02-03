@@ -16,6 +16,10 @@
 #include "mqtt-publisher.h"
 #endif // SI4707_WIZNET
 
+#if SI4707_PICO_W
+#include "lwipopts.h"
+#endif // SI4707_PICO_W
+
 #include "si4707_hal.h"
 
 // TODO:  conditionalize HAL inclusion based on target info
@@ -116,8 +120,10 @@ void prepare() {
     puts("si4707-cpp: prepare() ========================================================");
 
     // prep LED GPIO
+#ifdef PICO_DEFAULT_LED_PIN
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#endif // PICO_DEFAULT_LED_PIN
 }
 
 #if SI4707_WIZNET
@@ -244,6 +250,7 @@ void oneshot() {
     }
 
 #if SI4707_WIZNET
+    printf("this firmware uses Wiznet (W5x00) networking.\n");
     set_final_MAC_bytes(board_id.id[5], board_id.id[4]);
     snprintf(g_board_id_string, 32, "si4707/%x%x", board_id.id[5], board_id.id[4]);
     update_root_topic(g_board_id_string);
@@ -252,8 +259,10 @@ void oneshot() {
     sleep_ms(10);
 
     init_mqtt();
+#elif SI4707_PICO_W
+    printf("this firmware uses Pico W (CYW43) networking.\n");
 #else // SI4707_WIZNET off
-    printf("no networking in this build.");
+    printf("no networking in this build.\n");
 #endif // SI4707_WIZNET
 
     set_si4707_hal();
@@ -276,6 +285,7 @@ void oneshot() {
     // (Allows crystal oscillator to stabilize.)
     // AN332 page 12
     // kmo 2 feb 2024
+    puts("waiting before tune for crystal oscillator to stabilize");
     sleep_ms(600);
 
     const int tune_cts = si4707_await_cts(CTS_WAIT);
@@ -339,7 +349,9 @@ int main() {
 
 
         if (microseconds_since_last_heartbeat > g_current_heartbeat_interval) {
+            #ifdef PICO_DEFAULT_LED_PIN
             gpio_put(PICO_DEFAULT_LED_PIN, true);
+            #endif // PICO_DEFAULT_LED_PIN
             printf("\n ====== heartbeating ======================================\n");
 
             si4707_print_rsq();
@@ -357,7 +369,11 @@ int main() {
 #if SI4707_WIZNET
             last_DHCP_run = maintain_dhcp_lease(dhcp_interval, now, last_DHCP_run);
 #endif // SI4707_WIZNET
+            
+            #ifdef PICO_DEFAULT_LED_PIN
             gpio_put(PICO_DEFAULT_LED_PIN, false);
+            #endif // PICO_DEFAULT_LED_PIN
+
             main_loops++;
         }
 

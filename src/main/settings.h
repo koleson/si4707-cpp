@@ -1,4 +1,4 @@
-#define VERSION "2024.1.24"
+#define VERSION "2024.2.3"
 
 // ETHERNET
 #define MAC     {0x00, 0x08, 0xDC, 0x12, 0x00, 0x00}

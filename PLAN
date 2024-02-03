@@ -11,9 +11,13 @@ recently completed:
     - if we got a header and get an EOM, we can be fairly sure we are done for that instance
     - if 3 seconds has elapsed from first EOM, and state == 0, reset interrupts and clear SAME buffer
       - send end-of-message MQTT output prior to resetting
+- 2/3:  fixed long-standing issue where Wiznet MQTT publisher would fail to get a DHCP IP address.
+  - probably the physical medium was not ready.  maybe there's a way to check that?
+- 2/3:  fixed long-standing issue where Si4707 would report a valid tune but 0 RSSI / 0 SNR
+  - AN332 notes that the external crystal oscillator needs time to stabilize.  adding a 500ms delay improved this bug, and improved overall SNR numbers by ~5-9
 
 bugs:
-- none at the moment!
+- none at the moment! (hahaha, okay, none that i am noting here)
 
 short-term:
 - move mqtt secrets, etc. to uncommitted settings override header similar to Tasmota's
@@ -22,6 +26,8 @@ short-term:
 - move pi pico SDK calls out of si4707.c/.h to facilitate HAL and testing (IN PROGRESS)
 - attention signal status (good indicator that received SAME header is as good as it will get)
 - unify heartbeat interval logic (i think i'm updating it in several places right now)
+- clean up CMakeLists.txt with variants
+   - https://github.com/raspberrypi/pico-examples/blob/master/cmake/build_variants/CMakeLists.txt
 
 long-term:
 - watchdog timer for receive / alert / broadcast / state
