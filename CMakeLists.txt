@@ -134,7 +134,7 @@ if (SI4707_WIZNET)
         src/net/wiznet/mqtt-publisher.c
     )
 
-target_compile_definitions(si4707-cpp PRIVATE SI4707_WIZNET=1)
+    target_compile_definitions(si4707-cpp PRIVATE SI4707_WIZNET=1)
 
     # END:  WIZNET
 elseif(SI4707_PICO_W)
