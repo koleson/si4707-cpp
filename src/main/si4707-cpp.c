@@ -248,7 +248,8 @@ void oneshot() {
     for (int len = 0; len < 8; len++) {
         printf("%d: %02X  ", len, board_id.id[len]);
     }
-
+    printf("\n\n");
+    
 #if SI4707_WIZNET
     printf("this firmware uses Wiznet (W5x00) networking.\n");
     set_final_MAC_bytes(board_id.id[5], board_id.id[4]);
