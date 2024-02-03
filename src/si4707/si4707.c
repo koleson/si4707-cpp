@@ -180,17 +180,13 @@ void si4707_get_rev() {
 	}
 }
 
-void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) {
+void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) 
+{
 	uint8_t wb_rsq_resp[16] = { 0x00 };
 	const struct Si4707_Command_Args args;
-	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
 
-	const uint8_t valid = wb_rsq_resp[2] & 0x01;
-	const uint8_t rssi = wb_rsq_resp[4];
-	const uint8_t snr = wb_rsq_resp[5];
-	
-	rsq_status->RSSI = rssi;
-	rsq_status->ASNR = snr;
+	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
+	memcpy(&rsq_status, wb_rsq_resp, sizeof(struct Si4707_RSQ_Status));
 }
 
 void si4707_print_rsq() 

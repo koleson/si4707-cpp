@@ -18,19 +18,39 @@ struct Si4707_Heartbeat {
 };
 
 struct Si4707_RSQ_Status {
-    // unsigned int CTS: 		1;
-    // unsigned int ERR: 		1;
-    // unsigned int RSQINT: 	1;
-    // unsigned int SAMEINT: 	1;
-    // unsigned int ASQINT:	1;
-    // unsigned int SNRHINT:	1;
-    // unsigned int SNRLINT:	1;
-    // unsigned int RSSIHINT:  1;
-    // unsigned int RSSILINT:	1;
-    // unsigned int AFCRL:		1;
-    // unsigned int VALID:		1;
+    // byte 0: STATUS
+    unsigned int CTS: 		1;
+    unsigned int ERR: 		1;
+    unsigned int _b0_d4d5:  2;
+    unsigned int RSQINT: 	1;
+    unsigned int SAMEINT: 	1;
+    unsigned int ASQINT:	1;
+    
+    // byte 1: RESP1
+    unsigned int _b1_pad:   4;
+    unsigned int SNRHINT:	1;
+    unsigned int SNRLINT:	1;
+    unsigned int RSSIHINT:  1;
+    unsigned int RSSILINT:	1;
+
+    // byte 2:  RESP2
+    unsigned int _b2_pad:   6;
+    unsigned int AFCRL:		1;
+    unsigned int VALID:		1;
+
+    // byte 3: RESP3
+    unsigned int _b3_pad:   8;
+
+    // byte 4: RESP4 (RSSI)
     uint8_t RSSI;
+
+    // byte 5: RESP5 (ASNR)
     uint8_t ASNR;
+
+    // byte 6: RESP6 (pad)
+    uint8_t _b6_pad;
+
+    // byte 7: RESP7 (FREQOFF)
     uint8_t FREQOFF;
 };
 
