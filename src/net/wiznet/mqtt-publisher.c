@@ -217,6 +217,11 @@ int init_mqtt() {
 	
 	wizchip_1ms_timer_initialize(repeating_timer_callback);
 	
+	uint16_t delay_ms = 500;
+	printf("delaying network init %d ms for physical media startup\n", delay_ms);
+
+	sleep_ms(delay_ms);
+
 	puts("initializing network");
 	
 	if (g_net_info.dhcp == NETINFO_DHCP) // get DHCP IP
