@@ -103,7 +103,7 @@ void si4707_power_up() {
 	// CTS interrupt disable
 	// GPO2 output enabled
 	// boot normally
-	// crystal oscillator enabled
+	// crystal oscillator enabled (XOSCEN)
 	// weatherband receive
 	args.ARG1 = 0x53;
 	
@@ -117,6 +117,9 @@ void si4707_power_up() {
 	sleep_ms(10);
 }
 
+
+// PRECONDITION:  ensure external crystal oscillator is stable
+// before attempting to tune.  (AN332 suggests 500ms.)
 void si4707_tune() {
 	assert_HAL_set();
 	puts("tuning si4707 to 162.475MHz");

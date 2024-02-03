@@ -266,11 +266,23 @@ void oneshot() {
     if (cts) {
         puts("si4707 CTS - getting rev and tuning");
         si4707_get_rev();
-        si4707_tune();
 
         g_Si4707_booted_successfully = true;
     } else {
         puts("failed to start si4707 :(");
+    }
+
+    // Delay at least 500 ms between powerup command and first tune command.
+    // (Allows crystal oscillator to stabilize.)
+    // AN332 page 12
+    // kmo 2 feb 2024
+    sleep_ms(600);
+
+    const int tune_cts = si4707_await_cts(CTS_WAIT);
+    if (tune_cts) {
+        si4707_tune();
+    } else {
+        puts("got rev but could not get CTS for tune tune");
     }
 }
 
