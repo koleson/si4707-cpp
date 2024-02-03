@@ -22,10 +22,14 @@ void si4707_read_resp_16(uint8_t* resp);
 void si4707_power_up();
 void si4707_get_rev();
 void si4707_tune();
-void si4707_print_rsq();
+
 void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* response);
 
 void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status);
+void si4707_print_rsq();
+
+void si4707_get_asq(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack);
+void si4707_print_asq();
 
 void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
                             struct Si4707_SAME_Status_Packet *packet);

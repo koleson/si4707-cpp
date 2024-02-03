@@ -34,6 +34,27 @@ struct Si4707_RSQ_Status {
     uint8_t FREQOFF;
 };
 
+struct Si4707_ASQ_Status {
+    // byte 0:  STATUS
+    unsigned int CTS:       1;
+    unsigned int ERR:       1;
+    unsigned int _b0_d5:    1;
+    unsigned int _b0_d4:    1;
+    unsigned int RSQINT:    1;
+    unsigned int SAMEINT:   1;
+    unsigned int ASQINT:    1;
+    unsigned int STCINT:    1;
+    
+    // byte 1: RESP1
+    unsigned int _b1_pad:       6;
+    unsigned int ALERTOFF_INT:  1;
+    unsigned int ALERTON_INT:   1;
+
+    // byte 2: RESP2
+    unsigned int _b2_pad:       7;
+    unsigned int ALERT:         1;
+};
+
 struct Si4707_SAME_Status_Params {
     // byte 0:  command
 

@@ -201,6 +201,25 @@ void si4707_print_rsq()
 	printf("%4d  %3d\n\n", status.RSSI, status.ASNR);
 }
 
+
+void si4707_get_asq(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack) 
+{
+	uint8_t wb_asq_resp[16] = { 0x00 };
+	struct Si4707_Command_Args args;
+	args.ARG1 = (asq_int_ack ? 1 : 0);
+
+	current_hal->send_command_get_response_16(SI4707_CMD_WB_ASQ_STATUS, &args, wb_asq_resp);
+	memcpy(&asq_status, wb_asq_resp, sizeof(struct Si4707_ASQ_Status));
+}
+
+void si4707_print_asq()
+{
+	struct Si4707_ASQ_Status status;
+	si4707_get_asq(&status, false);
+	printf("ALERTOFF_INT  ALERTON_INT  ALERT\n");
+	printf("%12d  %11d  %5d\n\n", status.ALERTOFF_INT, status.ALERTON_INT, status.ALERT);
+}
+
 void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
 							struct Si4707_SAME_Status_Packet *packet) {
   uint8_t wb_same_resp[16] = { 0x00 };

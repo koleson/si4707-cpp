@@ -362,6 +362,8 @@ int main() {
                 printf("(status %d)\n", status);
             }
 
+            si4707_print_asq();
+
             construct_and_publish_heartbeat(main_loops, &rsq_status);
             last_heartbeat = now;
             outer_loops_since_last_heartbeat = 0;
