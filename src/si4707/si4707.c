@@ -184,9 +184,13 @@ void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status)
 {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
 	const struct Si4707_Command_Args args;
-
+	
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
-	memcpy(&rsq_status, wb_rsq_resp, sizeof(struct Si4707_RSQ_Status));
+	// printf("si4707_get_rsq[0]: %d", wb_rsq_resp[0]);
+	// printf("si4707_get_rsq[1]: %d", wb_rsq_resp[1]);
+	// printf("si4707_get_rsq[2]: %d", wb_rsq_resp[2]);
+
+	memcpy(rsq_status, wb_rsq_resp, sizeof(struct Si4707_RSQ_Status));
 }
 
 void si4707_print_rsq() 
@@ -205,7 +209,7 @@ void si4707_get_asq(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack)
 	args.ARG1 = (asq_int_ack ? 1 : 0);
 
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_ASQ_STATUS, &args, wb_asq_resp);
-	memcpy(&asq_status, wb_asq_resp, sizeof(struct Si4707_ASQ_Status));
+	memcpy(asq_status, wb_asq_resp, sizeof(struct Si4707_ASQ_Status));
 }
 
 void si4707_print_asq()

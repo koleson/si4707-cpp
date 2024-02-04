@@ -148,8 +148,8 @@ void construct_and_publish_heartbeat(int main_loops, const struct Si4707_RSQ_Sta
     struct Si4707_Heartbeat heartbeat;
     heartbeat.iteration = main_loops;
     heartbeat.si4707_started = g_Si4707_booted_successfully;
-    heartbeat.snr = (*rsq_status).ASNR;
-    heartbeat.rssi = (*rsq_status).RSSI;
+    heartbeat.snr = rsq_status->ASNR;
+    heartbeat.rssi = rsq_status->RSSI;
 #if SI4707_WIZNET
     publish_heartbeat(&heartbeat);
 #endif // SI4707_WIZNET
@@ -324,12 +324,18 @@ int main() {
         same_params.CLRBUF = false;
         same_params.INTACK = false;
         
-        struct Si4707_RSQ_Status rsq_status;
+        
         uint8_t status = 0;
-
-        const bool rsq_cts = si4707_await_cts(100);
-        if (rsq_cts) {
+        const bool status_cts = si4707_await_cts(CTS_WAIT);
+        if (status_cts) {
             status = si4707_read_status();
+        } else {
+            puts("status CTS timed out :(");
+        }
+
+        struct Si4707_RSQ_Status rsq_status;
+        const bool rsq_cts = si4707_await_cts(CTS_WAIT);
+        if (rsq_cts) {
             si4707_get_rsq(&rsq_status);
         } else {
             puts("RSQ/SAME status CTS timed out :(");
