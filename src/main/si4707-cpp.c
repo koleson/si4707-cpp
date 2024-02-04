@@ -324,7 +324,6 @@ int main() {
         same_params.CLRBUF = false;
         same_params.INTACK = false;
         
-        
         uint8_t status = 0;
         const bool status_cts = si4707_await_cts(CTS_WAIT);
         if (status_cts) {
