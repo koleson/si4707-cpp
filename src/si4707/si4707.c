@@ -66,7 +66,8 @@ void si4707_reset() {
 	puts("done resetting Si4707");
 }
 
-bool si4707_await_cts(const int maxWait) {
+bool si4707_await_cts(const int maxWait) 
+{
 	assert_HAL_set();
 	
 	int i = 0;
@@ -92,7 +93,8 @@ bool si4707_await_cts(const int maxWait) {
 	}
 }
 
-void si4707_power_up() {
+void si4707_power_up() 
+{
 	assert_HAL_set();
 	puts("si4707_power_up");
 
@@ -114,13 +116,16 @@ void si4707_power_up() {
 	
 	current_hal->send_command_get_response_16(cmd, &args, resp_buf);
 
+	// POSTCONDITION:  expect 110ms before CTS
+	// AN332 page 247
 	sleep_ms(10);
 }
 
 
 // PRECONDITION:  ensure external crystal oscillator is stable
 // before attempting to tune.  (AN332 suggests 500ms.)
-void si4707_tune() {
+void si4707_tune() 
+{
 	assert_HAL_set();
 	puts("tuning si4707 to 162.475MHz");
 	const uint8_t freqHigh = 0xFD;
@@ -136,11 +141,12 @@ void si4707_tune() {
 	uint8_t resp_buf[16];
 	current_hal->send_command_get_response_16(cmd, &args, resp_buf);
 
-	// tune status takes a moment to populate, so we don't check it here.
-	// kmo 10 oct 2023 21h54
+	// tune operation takes about 250ms per AN332, page 247.
+	// kmo 7 feb 2024
 }
 
-void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) {
+void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* args) 
+{
 	assert_HAL_set();
 	// we will ignore response but we need a place for it
 	// kmo 19 jan 2024 11h29
@@ -149,7 +155,8 @@ void si4707_send_command(const uint8_t cmd, const struct Si4707_Command_Args* ar
 	current_hal->send_command_get_response_16(cmd, args, resp_buf);
 }
 
-void si4707_send_command_noargs(const uint8_t cmd) {
+void si4707_send_command_noargs(const uint8_t cmd) 
+{
 	assert_HAL_set();
 	struct Si4707_Command_Args args;
 	args.ARG1 = 0x00; args.ARG2 = 0x00; args.ARG3 = 0x00; args.ARG4 = 0x00;
@@ -397,16 +404,23 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
   full_response->CONF = conf_buf;
 }
 
-void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* response) {
-	puts("EOMDET SOMDET PREDET HDRRDY STATE MSGLEN");
-	printf("%6d %6d %6d %6d %5d %6d\n", 
-				response->EOMDET, response->SOMDET, response->PREDET, 
-				response->HDRRDY, response->STATE, response->MSGLEN);
+void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* response) 
+{
+	puts("CTS ERR RSQINT SAMEINT ASQINT STCINT");
+	printf("%3d %3d %6d %7d %6d %6d\n", 
+				response->CTS, response->ERR, response->RSQINT, 
+				response->SAMEINT, response->ASQINT, response ->STCINT);
+	
+	puts("SOMDET PREDET HDRRDY EOMDET STATE MSGLEN");
+	printf("%6d %6d %6d %6d %5d %6d\n",
+				response->SOMDET, response->PREDET, response->HDRRDY, 
+				response->EOMDET, response->STATE, response->MSGLEN);
 
 	printf("SAME DATA: '%s'\n", response->DATA);
 }
 
-void si4707_free_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) {
+void si4707_free_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) 
+{
   if (response->DATA != NULL) 
 	{
 		free(response->DATA);
