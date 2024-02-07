@@ -158,6 +158,18 @@ void si4707_send_command_noargs(const uint8_t cmd) {
 	si4707_send_command(cmd, &args);
 }
 
+void si4707_set_property(uint8_t prop_high, uint8_t prop_low, uint8_t val_high, uint8_t val_low)
+{
+	// 0x12 SET_PROPERTY - AN332 page 177
+	assert_HAL_set();
+	struct Si4707_Command_Args args;
+	args.ARG1 = 0x00; // Always write to 0.
+	args.ARG2 = prop_high; args.ARG3 = prop_low;
+	args.ARG4 = val_high; args.ARG5 = val_low;
+	args.ARG6 = 0x00; args.ARG7 = 0x00;
+	si4707_send_command(SI4707_CMD_SET_PROPERTY, &args);
+}
+
 // NOTE:  DO NOT try to replace this with read_resp, as that requires CTS
 // and therefore causes recursion/stack overflow
 // kmo 17 jan 2024 16h26
