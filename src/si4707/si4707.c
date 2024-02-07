@@ -199,29 +199,29 @@ void si4707_get_rev() {
 	}
 }
 
-void si4707_get_rsq(struct Si4707_RSQ_Status *rsq_status) 
+void si4707_rsq_get(struct Si4707_RSQ_Status *rsq_status) 
 {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
 	const struct Si4707_Command_Args args;
 	
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
-	// printf("si4707_get_rsq[0]: %d", wb_rsq_resp[0]);
-	// printf("si4707_get_rsq[1]: %d", wb_rsq_resp[1]);
-	// printf("si4707_get_rsq[2]: %d", wb_rsq_resp[2]);
+	// printf("si4707_rsq_get[0]: %d", wb_rsq_resp[0]);
+	// printf("si4707_rsq_get[1]: %d", wb_rsq_resp[1]);
+	// printf("si4707_rsq_get[2]: %d", wb_rsq_resp[2]);
 
 	memcpy(rsq_status, wb_rsq_resp, sizeof(struct Si4707_RSQ_Status));
 }
 
-void si4707_print_rsq() 
+void si4707_rsq_print() 
 {
 	struct Si4707_RSQ_Status status;
-	si4707_get_rsq(&status);
+	si4707_rsq_get(&status);
 	puts("RSSI  SNR");
 	printf("%4d  %3d\n\n", status.RSSI, status.ASNR);
 }
 
 
-void si4707_get_asq(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack) 
+void si4707_asq_get(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack) 
 {
 	uint8_t wb_asq_resp[16] = { 0x00 };
 	struct Si4707_Command_Args args;
@@ -231,15 +231,15 @@ void si4707_get_asq(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack)
 	memcpy(asq_status, wb_asq_resp, sizeof(struct Si4707_ASQ_Status));
 }
 
-void si4707_print_asq()
+void si4707_asq_print()
 {
 	struct Si4707_ASQ_Status status;
-	si4707_get_asq(&status, false);
+	si4707_asq_get(&status, false);
 	printf("ALERTOFF_INT  ALERTON_INT  ALERT\n");
 	printf("%12d  %11d  %5d\n\n", status.ALERTOFF_INT, status.ALERTON_INT, status.ALERT);
 }
 
-void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
+void si4707_same_packet_get(const struct Si4707_SAME_Status_Params *params,
 							struct Si4707_SAME_Status_Packet *packet) {
   uint8_t wb_same_resp[16] = { 0x00 };
 
@@ -269,7 +269,7 @@ void si4707_get_same_packet(const struct Si4707_SAME_Status_Params *params,
   packet->HDRRDY = ((wb_same_resp[1] & 0x01) != 0);
 
   packet->STATE = wb_same_resp[2];
-  // printf("si4707_get_same_packet: wb_same_resp[3] = %d\n", wb_same_resp[3]);
+  // printf("si4707_same_packet_get: wb_same_resp[3] = %d\n", wb_same_resp[3]);
   packet->MSGLEN = wb_same_resp[3];
 
   // copy strings (not null-terminated, fixed-length)
@@ -294,7 +294,7 @@ static void copy_si4707_status_packet_to_full_response(const struct Si4707_SAME_
 
 	full_response->STATE  = 	status_packet->STATE;
 	full_response->MSGLEN = 	status_packet->MSGLEN;
-    // printf("si4707_get_same_status: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
+    // printf("si4707_same_status_get: first_packet.MSGLEN = %d\n", first_packet.MSGLEN);
 }
 
 static int responses_needed(int msglen) {
@@ -317,11 +317,11 @@ static int responses_needed(int msglen) {
 	return responses_needed;
 }
 
-void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
+void si4707_same_status_get(const struct Si4707_SAME_Status_Params *params, struct Si4707_SAME_Status_FullResponse *full_response)
 {
 	struct Si4707_SAME_Status_Packet first_packet;
 
-	si4707_get_same_packet(params, &first_packet);
+	si4707_same_packet_get(params, &first_packet);
 
 	copy_si4707_status_packet_to_full_response(&first_packet, full_response);
 
@@ -344,7 +344,7 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
 	struct Si4707_SAME_Status_Params same_buf_params;
 	struct Si4707_SAME_Status_Packet same_buf_packet;
 	if (params->INTACK || params->CLRBUF) {
-		printf("si4707.c: si4707_get_same_status: INTACK = %u / CLRBUF = %u\n", 
+		printf("si4707.c: si4707_same_status_get: INTACK = %u / CLRBUF = %u\n", 
 			params->INTACK, params->CLRBUF);
 	}
 	
@@ -390,7 +390,7 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
 		}
 
 		same_buf_params.READADDR = offset;
-		si4707_get_same_packet(&same_buf_params, &same_buf_packet);
+		si4707_same_packet_get(&same_buf_params, &same_buf_packet);
 
 		memcpy((same_buf + offset), same_buf_packet.DATA, chars_to_read);
 
@@ -404,7 +404,7 @@ void si4707_get_same_status(const struct Si4707_SAME_Status_Params *params, stru
   full_response->CONF = conf_buf;
 }
 
-void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* response) 
+void si4707_same_status_print(const struct Si4707_SAME_Status_FullResponse* response) 
 {
 	puts("CTS ERR RSQINT SAMEINT ASQINT STCINT");
 	printf("%3d %3d %6d %7d %6d %6d\n", 
@@ -419,7 +419,7 @@ void si4707_print_same_status(const struct Si4707_SAME_Status_FullResponse* resp
 	printf("SAME DATA: '%s'\n", response->DATA);
 }
 
-void si4707_free_SAME_Status_FullResponse(struct Si4707_SAME_Status_FullResponse* response) 
+void si4707_SAME_Status_FullResponse_free(struct Si4707_SAME_Status_FullResponse* response) 
 {
   if (response->DATA != NULL) 
 	{

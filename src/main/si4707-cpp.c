@@ -162,20 +162,20 @@ void get_and_publish_full_SAME_status(const struct Si4707_SAME_Status_Params *sa
         if (same_params->CLRBUF) {
             puts("get_and_publish_full_SAME_status:  clearing buffer");
         }
-        si4707_get_same_status(same_params, &same_status);
+        si4707_same_status_get(same_params, &same_status);
     } else {
         puts("SAME status CTS timed out :(");
     }
 
     //printf("printing SAME status\n");
-    si4707_print_same_status(&same_status);
+    si4707_same_status_print(&same_status);
     //printf("publishing SAME status\n");
 
 #if SI4707_WIZNET
     publish_SAME_status(&same_status);
 #endif // SI4707_WIZNET
 
-    si4707_free_SAME_Status_FullResponse(&same_status);
+    si4707_SAME_Status_FullResponse_free(&same_status);
 }
 
 void set_heartbeat_interval_for_SAME_state(const int same_state) {
@@ -213,7 +213,7 @@ void reset_SAME_interrupts_and_buffer() {
   const bool rsq_cts = si4707_await_cts(100);
   if (rsq_cts) 
   {
-    si4707_get_rsq(&rsq_status);
+    si4707_rsq_get(&rsq_status);
   } 
   else 
   {
@@ -224,7 +224,7 @@ void reset_SAME_interrupts_and_buffer() {
   if (same_packet_cts) 
   {
     same_params.READADDR = 0;
-    si4707_get_same_packet(&same_params, &same_packet);
+    si4707_same_packet_get(&same_params, &same_packet);
     // we do nothing with the result.
   }
 }
@@ -335,7 +335,7 @@ int main() {
         struct Si4707_RSQ_Status rsq_status;
         const bool rsq_cts = si4707_await_cts(CTS_WAIT);
         if (rsq_cts) {
-            si4707_get_rsq(&rsq_status);
+            si4707_rsq_get(&rsq_status);
         } else {
             puts("RSQ/SAME status CTS timed out :(");
         }
@@ -343,7 +343,7 @@ int main() {
         const bool same_packet_cts = si4707_await_cts(100);
         if (same_packet_cts) {
             same_params.READADDR = 0;
-            si4707_get_same_packet(&same_params, &same_packet);
+            si4707_same_packet_get(&same_params, &same_packet);
 
             // TODO:  move all state logic into state_functions
             state_functions[system_state](&same_packet);
@@ -360,14 +360,14 @@ int main() {
             #endif // PICO_DEFAULT_LED_PIN
             printf("\n ====== heartbeating ======================================\n");
 
-            si4707_print_rsq();
+            si4707_rsq_print();
 
             if (!(status & 0x01)) {
                 puts("tune invalid :(");
                 printf("(status %d)\n", status);
             }
 
-            si4707_print_asq();
+            si4707_asq_print();
 
             construct_and_publish_heartbeat(main_loops, &rsq_status);
             last_heartbeat = now;
