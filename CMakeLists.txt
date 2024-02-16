@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(PICO_SDK_FETCH_FROM_GIT ON)
 
+# Pull in Raspberry Pi Pico SDK (must be before project)
+include(pico_sdk_import.cmake)
+
 option(SI4707_WIZNET "Use Wiznet ethernet + MQTT client" OFF)
 option(SI4707_PICO_W "Use Pico W Wi-Fi + MQTT client" OFF)
 
@@ -31,10 +34,6 @@ else()
 endif()
 
 set(PICO_BOARD ${PICO_BOARD} CACHE STRING "PICO target board (e.g. pico)" FORCE)
-
-
-# Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
