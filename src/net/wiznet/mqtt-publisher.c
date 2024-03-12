@@ -167,6 +167,20 @@ int dhcp_wait() {
 }
 
 int connect_mqtt() {
+	enum returnCode mqtt_connect_network_retval;
+	NewNetwork(&g_mqtt_network, SOCKET_MQTT);
+	
+	puts("connecting to mqtt server");
+	mqtt_connect_network_retval = ConnectNetwork(&g_mqtt_network, g_mqtt_broker_ip, MQTT_PORT);
+	
+	if (mqtt_connect_network_retval != 1)
+	{
+		printf("MQTT Network connect failed\n");
+	
+		// TODO:  extract constant
+		return -98;
+	}
+
 	/* Initialize MQTT client */
 	MQTTClientInit(&g_mqtt_client, &g_mqtt_network, DEFAULT_TIMEOUT, g_mqtt_send_buf, ETHERNET_BUF_MAX_SIZE, g_mqtt_recv_buf, ETHERNET_BUF_MAX_SIZE);
 	
@@ -182,13 +196,12 @@ int connect_mqtt() {
 	enum returnCode mqtt_connect_retval;
 	
 	mqtt_connect_retval = MQTTConnect(&g_mqtt_client, &g_mqtt_packet_connect_data);
-	
 	if (mqtt_connect_retval < 0)
 	{
 		printf(" MQTT connect failed : %d\n", mqtt_connect_retval);
 	
 		// TODO:  extract constant
-		return 97;
+		return -97;
 	}
 	
 	if (mqtt_connect_retval == FAILURE) {
@@ -196,7 +209,7 @@ int connect_mqtt() {
 	}
 	
 	printf(" MQTT connected (mqtt_connect_retval: %d)\n", mqtt_connect_retval);
-	return 1;
+	return mqtt_connect_retval;
 }
 
 int init_mqtt() {
@@ -236,21 +249,9 @@ int init_mqtt() {
 
 	dhcp_wait();
 	
-	NewNetwork(&g_mqtt_network, SOCKET_MQTT);
-	
-	puts("connecting to mqtt server");
-	retval = ConnectNetwork(&g_mqtt_network, g_mqtt_broker_ip, MQTT_PORT);
-	
-	if (retval != 1)
-	{
-		printf("MQTT Network connect failed\n");
-	
-		// TODO:  extract constant
-		return 98;
-	}
 	
 	const int mqtt_retval = connect_mqtt();
-	if (mqtt_retval != 1) {
+	if (mqtt_retval < 0) {
 		printf("MQTT connect failed");
 		return mqtt_retval;
 	}
@@ -348,15 +349,31 @@ int publish(char* topic, char* payload) {
 	g_mqtt_message.payload = payload;
 	g_mqtt_message.payloadlen = strlen(g_mqtt_message.payload);
 
+	do {
 	mqtt_retval = MQTTPublish(&g_mqtt_client, topic, &g_mqtt_message);
 
-	if (mqtt_retval < 0)
+		if (mqtt_retval == FAILURE)
 	{
 		printf(" Publish failed : %d\n", mqtt_retval);
-		return mqtt_retval;
-	}
-	
+
+		// maybe need to disconnect and reconnect?
+		printf("mqtt client says it is connected, but publish failed - disconnecting/reconnecting\n");
+		MQTTDisconnect(&g_mqtt_client);
+		printf("disconnected, reconnecting...\n");
+		connect_mqtt();
+		printf("just connect_mqtt'd\n");
+		// TODO:  is there a maximum amount of retries here?
+		// once the device is on the network without a serial console, there's not much to do
+		// other than reboot after some large amount of retries.
+		// kmo 11 mar 2024 16h03
+		printf("delaying a moment to avoid floods\n");
+		sleep_ms(1000);
+		}
+		else
+		{
 	printf("%s Published (%d)\n", topic, mqtt_retval);
+		}
+	} while (mqtt_retval == FAILURE);
 	
 	if ((mqtt_retval = MQTTYield(&g_mqtt_client, g_mqtt_packet_connect_data.keepAliveInterval)) < 0)
 	{
