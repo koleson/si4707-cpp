@@ -202,8 +202,10 @@ void si4707_get_rev() {
 void si4707_rsq_get(struct Si4707_RSQ_Status *rsq_status) 
 {
 	uint8_t wb_rsq_resp[16] = { 0x00 };
-	const struct Si4707_Command_Args args;
-	
+	struct Si4707_Command_Args args;
+	// setting INTACK seems to do nothing. kmo 20 mar 2024 11h44
+	// args.ARG1 = 1;
+
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_RSQ_STATUS, &args, wb_rsq_resp);
 	// printf("si4707_rsq_get[0]: %d", wb_rsq_resp[0]);
 	// printf("si4707_rsq_get[1]: %d", wb_rsq_resp[1]);
@@ -223,12 +225,25 @@ void si4707_rsq_print()
 
 void si4707_asq_get(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack) 
 {
-	uint8_t wb_asq_resp[16] = { 0x00 };
+	uint8_t wb_asq_resp[16] = { 0xFF };
 	struct Si4707_Command_Args args;
-	args.ARG1 = (asq_int_ack ? 1 : 0);
+	// args.ARG1 = (asq_int_ack ? 1 : 0);
+	// setting INTACK seems to do nothing. kmo 20 mar 2024 11h44
+	// args.ARG1 = 1;
 
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_ASQ_STATUS, &args, wb_asq_resp);
 	memcpy(asq_status, wb_asq_resp, sizeof(struct Si4707_ASQ_Status));
+	printf("wb_asq_resp[0]: 0x%02x\n", wb_asq_resp[0]);
+	printf("wb_asq_resp[1]: 0x%02x\n", wb_asq_resp[1]);
+	printf("wb_asq_resp[2]: 0x%02x\n", wb_asq_resp[2]);
+	
+	printf("\n\n");
+
+	printf("asq_status->_b1_pad: 0x%02x\n", asq_status->_b1_pad);
+	printf("asq_status->ALERTOFF_INT: 0x%02x\n", asq_status->ALERTOFF_INT);
+	printf("asq_status->ALERTON_INT: 0x%02x\n", asq_status->ALERTON_INT);
+	printf("asq_status->ALERT: 0x%02x\n", asq_status->ALERT);
+	printf("\n\n");
 }
 
 void si4707_asq_print()
