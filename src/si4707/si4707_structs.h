@@ -54,7 +54,16 @@ struct Si4707_RSQ_Status {
     uint8_t FREQOFF;
 };
 
+
 struct Si4707_ASQ_Status {
+    // REMEMBER:  bit order matters here.
+    // fields should be listed LSB to MSB within a byte
+    // kmo 20 mar 2024 11h37
+
+    // if above is true it seems like the other structs need adjustment!  
+    // STATUS on this and others are not in LSB-MSB order.
+    // kmo 20 mar 2024 11h38
+
     // byte 0:  STATUS
     unsigned int CTS:       1;
     unsigned int ERR:       1;
@@ -66,13 +75,16 @@ struct Si4707_ASQ_Status {
     unsigned int STCINT:    1;
     
     // byte 1: RESP1
-    unsigned int _b1_pad:       6;
-    unsigned int ALERTOFF_INT:  1;
     unsigned int ALERTON_INT:   1;
+    unsigned int ALERTOFF_INT:  1;
+    unsigned int _b1_pad:       6;
+    
+    
 
     // byte 2: RESP2
-    unsigned int _b2_pad:       7;
     unsigned int ALERT:         1;
+    unsigned int _b2_pad:       7;
+    
 };
 
 struct Si4707_SAME_Status_Params {
