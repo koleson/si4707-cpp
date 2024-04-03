@@ -63,15 +63,23 @@ void receiving_header_handler(const struct Si4707_SAME_Status_Packet *status) {
     printf("r");
 };
 
-void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
-    // TODO:  handle alert tone by getting ASQ status
-    // kmo 6 dec 2023 18h34
-
-    if (status->EOMDET == 1) {
+void header_ready_handler(const struct Si4707_SAME_Status_Packet *same_status) {
+    struct Si4707_ASQ_Status asq_status;
+    si4707_asq_get(&asq_status, false);
+    
+    if (asq_status.ALERT == 1)
+    {
+        printf("\n\n=== ALERT TONE ON ===\n");
+        system_state = ALERT_TONE;
+        printf("system_state:  moving to state ALERT_TONE\n");
+        return;
+    }
+    else if (same_status->EOMDET == 1)
+    {
         printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===\n");
         gs_first_EOM_timestamp_us = time_us_64();
         system_state = EOM_WAIT;
-        printf("system_state: moving to state EOM_WAIT");
+        printf("system_state: moving to state EOM_WAIT\n");
         return;
     }
     printf("h");
@@ -79,8 +87,35 @@ void header_ready_handler(const struct Si4707_SAME_Status_Packet *status) {
 
 // TODO:  currently not handling alert tone or broadcast specially - requires ASQ data
 // kmo 6 dec 2023
-void alert_tone_handler(const struct Si4707_SAME_Status_Packet *status) {};
-void broadcast_handler(const struct Si4707_SAME_Status_Packet *status) {};
+void alert_tone_handler(const struct Si4707_SAME_Status_Packet *status) {
+    struct Si4707_ASQ_Status asq_status;
+    si4707_asq_get(&asq_status, false);
+    
+    if (asq_status.ALERT == 0)
+    {
+        // alert tone ended - broadcast beginning
+        printf("\n\n=== ALERT TONE OFF - BROADCAST FOLLOWS ===\n");
+        system_state = BROADCAST;
+        printf("system_state: moving to state BROADCAST\n");
+        return;
+    }
+    // should also probably handle EOMDET here.  kmo 21 mar 2024 12h58
+    printf("a");
+};
+
+void broadcast_handler(const struct Si4707_SAME_Status_Packet *status) {
+    // TODO:  below copypasta from `header_ready_handler` - commonize
+    // kmo 21 mar 2024 12h59
+    if (status->EOMDET == 1)
+    {
+        printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===\n");
+        gs_first_EOM_timestamp_us = time_us_64();
+        system_state = EOM_WAIT;
+        printf("system_state: moving to state EOM_WAIT\n");
+        return;
+    }
+    printf("b");
+};
 
 
 void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {

@@ -233,17 +233,6 @@ void si4707_asq_get(struct Si4707_ASQ_Status *asq_status, bool asq_int_ack)
 
 	current_hal->send_command_get_response_16(SI4707_CMD_WB_ASQ_STATUS, &args, wb_asq_resp);
 	memcpy(asq_status, wb_asq_resp, sizeof(struct Si4707_ASQ_Status));
-	printf("wb_asq_resp[0]: 0x%02x\n", wb_asq_resp[0]);
-	printf("wb_asq_resp[1]: 0x%02x\n", wb_asq_resp[1]);
-	printf("wb_asq_resp[2]: 0x%02x\n", wb_asq_resp[2]);
-	
-	printf("\n\n");
-
-	printf("asq_status->_b1_pad: 0x%02x\n", asq_status->_b1_pad);
-	printf("asq_status->ALERTOFF_INT: 0x%02x\n", asq_status->ALERTOFF_INT);
-	printf("asq_status->ALERTON_INT: 0x%02x\n", asq_status->ALERTON_INT);
-	printf("asq_status->ALERT: 0x%02x\n", asq_status->ALERT);
-	printf("\n\n");
 }
 
 void si4707_asq_print()
