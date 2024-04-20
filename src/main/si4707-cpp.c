@@ -41,9 +41,11 @@ static uint64_t gs_consecutive_idle_handler_executions = 0;
 void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
     if (status->PREDET == 1) {
         printf("\n\n=== ZCZC - RECEIVING MESSAGE ===\n");
+        System_State previous_state = system_state;
         system_state = RECEIVING_HEADER;
         gs_consecutive_idle_handler_executions = 0;
         printf("system_state: moving to state RECEIVING_HEADER\n");
+        publish_system_state(previous_state, system_state); 
         return;
     }
     
@@ -56,8 +58,10 @@ void idle_handler(const struct Si4707_SAME_Status_Packet *status) {
 void receiving_header_handler(const struct Si4707_SAME_Status_Packet *status) {
     if (status->HDRRDY == 1) {
         printf("\n\n=== SAME HEADER RECEIVED AND READY ===\n");
+        System_State previous_state = system_state;
         system_state = HEADER_READY;
         printf("system_state: moving to state HEADER_READY\n");
+        publish_system_state(previous_state, system_state);
         return;
     }
     printf("r");
@@ -70,16 +74,20 @@ void header_ready_handler(const struct Si4707_SAME_Status_Packet *same_status) {
     if (asq_status.ALERT == 1)
     {
         printf("\n\n=== ALERT TONE ON ===\n");
+        System_State previous_state = system_state;
         system_state = ALERT_TONE;
         printf("system_state:  moving to state ALERT_TONE\n");
+        publish_system_state(previous_state, system_state);
         return;
     }
     else if (same_status->EOMDET == 1)
     {
         printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===\n");
         gs_first_EOM_timestamp_us = time_us_64();
+        System_State previous_state = system_state;
         system_state = EOM_WAIT;
         printf("system_state: moving to state EOM_WAIT\n");
+        publish_system_state(previous_state, system_state);
         return;
     }
     printf("h");
@@ -95,8 +103,10 @@ void alert_tone_handler(const struct Si4707_SAME_Status_Packet *status) {
     {
         // alert tone ended - broadcast beginning
         printf("\n\n=== ALERT TONE OFF - BROADCAST FOLLOWS ===\n");
+        System_State previous_state = system_state;
         system_state = BROADCAST;
         printf("system_state: moving to state BROADCAST\n");
+        publish_system_state(previous_state, system_state);
         return;
     }
     // should also probably handle EOMDET here.  kmo 21 mar 2024 12h58
@@ -110,8 +120,10 @@ void broadcast_handler(const struct Si4707_SAME_Status_Packet *status) {
     {
         printf("\n\n=== EOM RECEIVED - WAITING FOR EOM TIMEOUT ===\n");
         gs_first_EOM_timestamp_us = time_us_64();
+        System_State previous_state = system_state;
         system_state = EOM_WAIT;
         printf("system_state: moving to state EOM_WAIT\n");
+        publish_system_state(previous_state, system_state);
         return;
     }
     printf("b");
@@ -128,8 +140,10 @@ void eom_wait_handler(const struct Si4707_SAME_Status_Packet *status) {
         // otherwise you will fly through all the various states unendingly.
         // kmo 6 dec 2023 18h43
         reset_SAME_interrupts_and_buffer();
+        System_State previous_state = system_state;
         system_state = IDLE;
         printf("system_state: moving to state IDLE");
+        publish_system_state(previous_state, system_state);
         return;
     }  
     printf("e");

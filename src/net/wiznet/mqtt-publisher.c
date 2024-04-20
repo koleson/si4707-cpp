@@ -351,6 +351,20 @@ const char * const state_str[] =
 	[EOM_WAIT] = "EOM_WAIT"
 };
 
+int publish_system_state(System_State previous, System_State current) {
+	printf("publishing state transition from %s to %s\n", state_str[previous], state_str[current]);
+	char topic[32];
+	sprintf(topic, "%s/%s", root_topic, "system_state");
+
+	char payload[256] = { 0x00 };
+	char* format = "{ \"previous_state\": \"%s\", current_state\": \"%s\" }";
+	sprintf(payload, format, state_str[previous], state_str[current]);
+
+	int mqtt_retval = publish(topic, payload);
+	
+	return mqtt_retval;
+}
+
 int publish(char* topic, char* payload) {
 	int mqtt_retval = 0;
 
