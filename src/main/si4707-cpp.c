@@ -7,6 +7,8 @@
 
 #include "pico/unique_id.h"
 
+#include "system_state.h"
+
 #include "hardware.h"
 #include "si4707_const.h"
 
@@ -31,8 +33,6 @@
 void reset_SAME_interrupts_and_buffer();
 // end forward declarations
 
-
-typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT } System_State;
 System_State system_state = IDLE;
 
 static uint64_t gs_first_EOM_timestamp_us = 0;

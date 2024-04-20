@@ -1,3 +1,5 @@
+#include "system_state.h"
+
 int dhcp_run_wrapper();
 // int dhcp_wait();
 void update_root_topic(char* new_topic_root);

@@ -1,0 +1,6 @@
+#ifndef SYSTEM_STATE_H
+#define SYSTEM_STATE_H
+
+typedef enum { IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT } System_State;
+
+#endif // SYSTEM_STATE_H
