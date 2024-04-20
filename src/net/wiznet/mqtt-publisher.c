@@ -339,6 +339,18 @@ int publish_heartbeat(struct Si4707_Heartbeat *heartbeat)
 	return mqtt_retval;
 }
 
+// https://stackoverflow.com/questions/9907160/how-to-convert-enum-names-to-string-in-c
+// IDLE=0, RECEIVING_HEADER, HEADER_READY, ALERT_TONE, BROADCAST, EOM_WAIT
+const char * const state_str[] = 
+{
+	[IDLE] = "IDLE",
+	[RECEIVING_HEADER] = "RECEIVING_HEADER",
+	[HEADER_READY] = "HEADER_READY",
+	[ALERT_TONE] = "ALERT_TONE",
+	[BROADCAST] = "BROADCAST",
+	[EOM_WAIT] = "EOM_WAIT"
+};
+
 int publish(char* topic, char* payload) {
 	int mqtt_retval = 0;
 
